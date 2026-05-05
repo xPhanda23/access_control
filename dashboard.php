@@ -16,17 +16,20 @@ $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 </head>
 <body>
     <div class="app-container">
-        <aside class="sidebar">
-            <h2>🔐 AccessControl</h2>
-            <ul>
-                <li><a href="dashboard.php" class="active">🏠 Dashboard</a></li>
-                <li><a href="manage_cards.php">💳 Cartões</a></li>
-                <li><a href="manage_devices.php">📡 Dispositivos</a></li>
-                <li><a href="access_logs.php">📜 Logs</a></li>
-                <li><a href="simulator.php">🔧 Simulador ESP32</a></li>
-                <li><a href="logout.php">🚪 Sair</a></li>
-            </ul>
-        </aside>
+<aside class="sidebar">
+    <h2>Menu</h2>
+    <ul>
+        <li><a href="dashboard.php">🏠 Dashboard</a></li>
+        <li><a href="manage_cards.php">💳 Cartões de Acesso</a></li>
+        <li><a href="manage_devices.php">📡 Dispositivos (ESP32)</a></li>
+        <?php if (hasRole('admin')): ?>
+            <li><a href="manage_users.php">👥 Usuários do Sistema</a></li>
+        <?php endif; ?>
+        <li><a href="access_logs.php">📜 Logs de Acesso</a></li>
+        <li><a href="simulator.php">🔧 Simulador ESP32</a></li>
+        <li><a href="logout.php">🚪 Sair</a></li>
+    </ul>
+</aside>
         <main class="main-content">
             <h1>Olá, <?php echo htmlspecialchars($fullname); ?></h1>
             <p>Perfil: <?php echo ($role == 'admin') ? 'Administrador' : 'Direção'; ?></p>

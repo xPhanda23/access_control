@@ -67,13 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                 <div class="input-group">
                     <label for="password">Senha</label>
-                    <input type="password" id="password" name="password" required placeholder="••••••••">
+                    <input type="password" id="password" name="password" required placeholder="Digite sua senha">
                 </div>
                 <button type="submit" class="btn btn-primary">Entrar</button>
             </form>
-            <div class="login-footer">
-                <p>Credenciais de teste: <strong>admin</strong> / <strong>admin123</strong></p>
-            </div>
         </div>
     </div>
 </body>
