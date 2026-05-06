@@ -1,4 +1,5 @@
 // Interações básicas e confirmações
+
 document.addEventListener('DOMContentLoaded', function() {
     // Confirmar exclusões
     const deleteLinks = document.querySelectorAll('.btn-danger');

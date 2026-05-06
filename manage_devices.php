@@ -171,7 +171,7 @@ $devices_result = $conn->query("SELECT * FROM devices ORDER BY id DESC");
                     </div>
                     <div class="input-group">
                         <label>📍 Localização</label>
-                        <input type="text" name="location" value="<?php echo $isEditing ? htmlspecialchars($editDevice['location']) : ''; ?>" placeholder="ex: Bloco B, Sala 12">
+                        <input type="text" name="location" value="<?php echo $isEditing ? htmlspecialchars($editDevice['location']) : ''; ?>" placeholder="ex: Sala 02">
                     </div>
                     <div class="input-group">
                         <label>⚡ Status (inicial)</label>
@@ -218,8 +218,7 @@ $devices_result = $conn->query("SELECT * FROM devices ORDER BY id DESC");
 
         <!-- Mensagem de informação sobre integração real -->
         <div class="info-card" style="background: #eef2ff; border-radius: 20px; padding: 20px; margin-top: 30px;">
-            <p>⚠️ <strong>Ambiente de gestão</strong> – Os dispositivos ESP32 reais se comunicarão via <code>api/verify_card.php</code>.<br>
-            Teste o fluxo completo usando o <strong>Simulador ESP32</strong> no menu ao lado.</p>
+            <p>⚠️ <strong>Ambiente de gestão</strong> – Os dispositivos ESP32 reais se comunicarão via <code>api/verify_card.php</code>.<br></p>
         </div>
     </main>
 </div>

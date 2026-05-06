@@ -382,11 +382,11 @@ $users_result = $conn->query("SELECT * FROM users ORDER BY id ASC");
                 <div class="form-grid">
                     <div class="input-group">
                         <label>👤 Nome de Usuário *</label>
-                        <input type="text" name="username" value="<?php echo $isEditing ? htmlspecialchars($editUser['username']) : ''; ?>" required placeholder="ex: diretor_carlos">
+                        <input type="text" name="username" value="<?php echo $isEditing ? htmlspecialchars($editUser['username']) : ''; ?>" required placeholder="ex: diretor_tafarel">
                     </div>
                     <div class="input-group">
                         <label>📛 Nome Completo *</label>
-                        <input type="text" name="fullname" value="<?php echo $isEditing ? htmlspecialchars($editUser['fullname']) : ''; ?>" required placeholder="ex: Carlos Silva Santos">
+                        <input type="text" name="fullname" value="<?php echo $isEditing ? htmlspecialchars($editUser['fullname']) : ''; ?>" required placeholder="ex: Tafarel Cantuária">
                     </div>
                     <div class="input-group">
                         <label>🎭 Perfil *</label>
@@ -417,39 +417,51 @@ $users_result = $conn->query("SELECT * FROM users ORDER BY id ASC");
         <h2 style="margin: 40px 0 20px;">📋 Usuários Cadastrados</h2>
         <div style="overflow-x: auto;">
             <table class="data-table">
-                <thead>
-                    <tr><th>ID</th><th>Usuário</th><th>Nome Completo</th><th>Perfil</th><th>Data Cadastro</th><th>Ações</th></tr>
-                </thead>
-                <tbody>
-                    <?php if ($users_result && $users_result->num_rows > 0): ?>
-                        <?php while ($user = $users_result->fetch_assoc()): ?>
-                            <tr>
-                                <tr><?php echo $user['id']; ?></td>
-                                <td>
-                                    <?php echo htmlspecialchars($user['username']); ?>
-                                    <?php if ($user['id'] == $_SESSION['user_id']): ?>
-                                        <span class="current-user-badge">VOCÊ</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?php echo htmlspecialchars($user['fullname']); ?></td>
-                                <td><span class="role-badge <?php echo $user['role']; ?>">
-                                    <?php echo $user['role'] == 'admin' ? '👑 Administrador' : '📋 Direção'; ?>
-                                </span></td>
-                                <td><?php echo date('d/m/Y H:i', strtotime($user['created_at'])); ?></td>
-                                <td class="actions-cell">
-                                    <a href="?edit=<?php echo $user['id']; ?>" class="btn-small btn-edit">✏️ Editar</a>
-                                    <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                        <button class="btn-small btn-delete" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['username']); ?>">🗑️ Excluir</button>
-                                    <?php else: ?>
-                                        <span class="btn-small" style="background: #cbd5e1; cursor: not-allowed;" title="Não pode excluir a si mesmo">🚫 Auto-exclusão</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr><td colspan="6" style="text-align: center;">Nenhum usuário cadastrado ainda.<?php endif; ?>
-                </tbody>
-            </table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Usuário</th>
+            <th>Nome Completo</th>
+            <th>Perfil</th>
+            <th>Data Cadastro</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php if ($users_result && $users_result->num_rows > 0): ?>
+            <?php while ($user = $users_result->fetch_assoc()): ?>
+                <tr>
+                    <td><?php echo $user['id']; ?></td>
+                    <td>
+                        <?php echo htmlspecialchars($user['username']); ?>
+                        <?php if ($user['id'] == $_SESSION['user_id']): ?>
+                            <span class="current-user-badge">VOCÊ</span>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo htmlspecialchars($user['fullname']); ?></td>
+                    <td>
+                        <span class="role-badge <?php echo $user['role']; ?>">
+                            <?php echo $user['role'] == 'admin' ? '👑 Administrador' : '📋 Direção'; ?>
+                        </span>
+                    </td>
+                    <td><?php echo date('d/m/Y H:i', strtotime($user['created_at'])); ?></td>
+                    <td class="actions-cell">
+                        <a href="?edit=<?php echo $user['id']; ?>" class="btn-small btn-edit">✏️ Editar</a>
+                        <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                            <button class="btn-small btn-delete" data-id="<?php echo $user['id']; ?>" data-name="<?php echo htmlspecialchars($user['username']); ?>">🗑️ Excluir</button>
+                        <?php else: ?>
+                            <span class="btn-small" style="background: #cbd5e1; cursor: not-allowed;" title="Não pode excluir a si mesmo">🚫 Auto-exclusão</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <tr>
+                <td colspan="6" style="text-align: center;">Nenhum usuário cadastrado ainda.</td>
+            </tr>
+        <?php endif; ?>
+    </tbody>
+</table>
         </div>
 
         <div class="profile-card">

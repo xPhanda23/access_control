@@ -323,11 +323,6 @@ $fullname = $_SESSION['user_fullname'];
                         <li>Administrador possui controle total do sistema e usuários.</li>
                     </ul>
                 </div>
-                <div class="overview-card info-card">
-                    <h3>⚡ Informações Técnicas</h3>
-                    <p>✅ Comunicação com ESP32 via API REST<br>✅ Banco de dados MySQL seguro<br>✅ Interface responsiva e moderna</p>
-                    <p>📡 <strong>Sistema pronto para integração com hardware real</strong></p>
-                </div>
             </div>
         </main>
     </div>
