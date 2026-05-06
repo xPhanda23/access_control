@@ -53,7 +53,3 @@ O **AccessControl** é um sistema de gerenciamento de acesso físico para instit
 - Simulação de leitura de cartões em dispositivos específicos.
 - Resposta simulada da trava eletrônica.
 - Histórico dos últimos testes.
-
----
-
-## 🏗️ Estrutura do Projeto
