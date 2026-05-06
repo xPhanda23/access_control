@@ -202,7 +202,7 @@ $fullname = $_SESSION['user_fullname'];
             <!-- Saudação personalizada -->
             <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                 <h1 style="margin: 0; font-size: 24px;"><?php echo $saudacao; ?>, <?php echo htmlspecialchars($fullname); ?>!</h1>
-                <p style="color: #6c757d; margin-top: 8px;">Perfil: <?php echo ($role == 'admin') ? 'Administrador (Controle Total)' : 'Direção (Gestão)'; ?></p>
+                <p style="color: #6c757d; margin-top: 8px;">Perfil: <?php echo ($role == 'admin') ? 'Administrador' : 'Direção'; ?></p>
             </div>
 
             <!-- Cards de estatísticas principais -->

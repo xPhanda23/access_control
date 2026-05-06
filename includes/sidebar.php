@@ -1,7 +1,4 @@
 <?php
-// ============================================
-// sidebar.php - Barra lateral padrão
-// ============================================
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <aside class="sidebar">
