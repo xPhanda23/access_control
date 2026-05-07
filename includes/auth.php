@@ -7,16 +7,19 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/db.php';
 
 // Verifica se o usuário está logado
+
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
 }
 
 // Verifica se o usuário tem uma determinada função (admin ou direcao)
+
 function hasRole($role) {
     return (isset($_SESSION['user_role']) && $_SESSION['user_role'] == $role);
 }
 
 // Redireciona se não estiver logado
+
 function requireLogin() {
     if (!isLoggedIn()) {
         header('Location: login.php');
@@ -25,6 +28,7 @@ function requireLogin() {
 }
 
 // Redireciona se não tiver permissão de admin
+
 function requireAdmin() {
     requireLogin();
     if (!hasRole('admin')) {

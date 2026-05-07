@@ -1,7 +1,4 @@
 <?php
-// ============================================
-// access_logs.php - Logs de Acesso do Sistema
-// ============================================
 
 require_once 'includes/auth.php';
 requireLogin();
@@ -11,6 +8,7 @@ $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 // ============================================
 // FILTROS (via GET)
 // ============================================
+
 $search_card = isset($_GET['search_card']) ? trim($_GET['search_card']) : '';
 $device_filter = isset($_GET['device_filter']) ? intval($_GET['device_filter']) : 0;
 $status_filter = isset($_GET['status_filter']) ? $_GET['status_filter'] : '';
@@ -18,6 +16,7 @@ $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
 $end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
 
 // Montar query com filtros
+
 $where = [];
 $params = [];
 $types = '';
@@ -63,20 +62,24 @@ $stmt->execute();
 $logs_result = $stmt->get_result();
 
 // Buscar dispositivos para o filtro
+
 $devices_list = $conn->query("SELECT id, device_name FROM devices ORDER BY device_name");
 
 // Contar total de registros (para informação)
+
 $total_logs = $logs_result->num_rows;
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logs de Acesso - AccessControl</title>
+    <title>AccessPoint - Logs de Acesso</title>
     <link rel="stylesheet" href="assets/style.css">
+
     <style>
-        /* Estilos específicos para esta página */
+
         .filters-bar {
             background: white;
             border-radius: 24px;
@@ -188,6 +191,7 @@ $total_logs = $logs_result->num_rows;
                 align-items: flex-start;
             }
         }
+
     </style>
 </head>
 <body>
@@ -202,13 +206,13 @@ $total_logs = $logs_result->num_rows;
             </span>
         </div>
 
-        <!-- Card com estatísticas rápidas -->
         <div class="stats-card">
             <div>🔍 <strong>Total de registros exibidos:</strong> <span class="stats-number"><?php echo $total_logs; ?></span></div>
             <div>📅 Última atualização: <?php echo date('d/m/Y H:i:s'); ?></div>
         </div>
 
         <!-- Barra de filtros -->
+
         <div class="filters-bar">
             <form method="GET" action="">
                 <div class="filters-grid">
@@ -252,6 +256,7 @@ $total_logs = $logs_result->num_rows;
         </div>
 
         <!-- Tabela de logs -->
+
         <div style="overflow-x: auto;">
             <table class="data-table">
                 <thead>
@@ -288,6 +293,7 @@ $total_logs = $logs_result->num_rows;
         </div>
 
         <!-- Informação adicional -->
+         
         <div style="background: #f1f5f9; border-radius: 20px; padding: 16px; margin-top: 28px; font-size: 0.85rem; text-align: center;">
             💡 Os logs mostram todas as tentativas de acesso (sucesso ou falha). Use os filtros para refinar a busca.
         </div>

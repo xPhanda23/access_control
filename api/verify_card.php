@@ -4,6 +4,7 @@ require_once '../includes/db.php';
 
 // Endpoint que o ESP32 chamará via POST
 // Espera receber: card_uid e device_id (ou device_name)
+
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) {
     // tentar GET também para simular
@@ -20,6 +21,7 @@ if (!$card_uid || !$device_id) {
 }
 
 // Buscar dispositivo
+
 $devStmt = $conn->prepare("SELECT device_name FROM devices WHERE id = ?");
 $devStmt->bind_param("i", $device_id);
 $devStmt->execute();
@@ -32,6 +34,7 @@ $device = $devResult->fetch_assoc();
 $device_name = $device['device_name'];
 
 // Verificar cartão
+
 $cardStmt = $conn->prepare("SELECT id, status FROM cards WHERE card_uid = ?");
 $cardStmt->bind_param("s", $card_uid);
 $cardStmt->execute();
@@ -52,6 +55,7 @@ if ($card['status'] != 'active') {
 }
 
 // Verificar permissão (tabela card_access)
+
 $permStmt = $conn->prepare("SELECT * FROM card_access WHERE card_id = ? AND device_id = ?");
 $permStmt->bind_param("ii", $card['id'], $device_id);
 $permStmt->execute();
@@ -64,6 +68,7 @@ if ($permResult->num_rows == 0) {
 }
 
 // Tudo OK - conceder acesso
+
 $msg = "Acesso liberado para " . $device_name;
 logAccess($card_uid, $device_id, $device_name, true, $msg);
 echo json_encode(['success' => true, 'message' => $msg, 'open_door' => true]);

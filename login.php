@@ -1,8 +1,9 @@
 <?php
-// NÃO precisa de session_start() aqui, pois auth.php já cuida disso
+
 require_once 'includes/auth.php';
 
 // Se já estiver logado, vai direto para o dashboard
+
 if (isLoggedIn()) {
     header('Location: dashboard.php');
     exit;
@@ -41,12 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistema de Controle de Acesso</title>
+    <title>AccessPoint - Login</title>
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="login-page">
@@ -54,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <div class="login-card">
             <div class="login-header">
                 <div class="icon">🔐</div>
-                <h1>Controle de Acesso Escolar</h1>
+                <h1>AccessPoint</h1>
                 <p>Gestão de cartões e dispositivos</p>
             </div>
             <?php if ($error): ?>

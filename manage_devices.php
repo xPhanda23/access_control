@@ -1,22 +1,17 @@
 <?php
-// ============================================
-// manage_devices.php - Gerenciamento de Dispositivos ESP32
-// ============================================
 
 require_once 'includes/auth.php';
 requireLogin();
 
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
-// ============================================
-// VARIÁVEIS E AÇÕES
-// ============================================
 $message = '';
 $error = '';
 $editDevice = null;
 $isEditing = false;
 
 // Alternar status online/offline (simulação)
+
 if (isset($_GET['toggle_status']) && is_numeric($_GET['toggle_status'])) {
     $id = intval($_GET['toggle_status']);
     $conn->query("UPDATE devices SET status = IF(status='online', 'offline', 'online'), last_seen = NOW() WHERE id = $id");
@@ -26,6 +21,7 @@ if (isset($_GET['toggle_status']) && is_numeric($_GET['toggle_status'])) {
 }
 
 // Excluir dispositivo
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $id = intval($_GET['delete']);
     // Remove primeiro as permissões associadas
@@ -40,6 +36,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
 }
 
 // Buscar dispositivo para edição
+
 if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
     $id = intval($_GET['edit']);
     $result = $conn->query("SELECT * FROM devices WHERE id = $id");
@@ -97,22 +94,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Recuperar mensagens da URL
+
 if (isset($_GET['msg'])) $message = urldecode($_GET['msg']);
 if (isset($_GET['err'])) $error = urldecode($_GET['err']);
 
 // Listar todos os dispositivos
+
 $devices_result = $conn->query("SELECT * FROM devices ORDER BY id DESC");
 
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Dispositivos - AccessControl</title>
+    <title>AccessPoint - Gerenciar Dispositivos</title>
     <link rel="stylesheet" href="assets/style.css">
+
     <style>
-        /* ========== LAYOUT ESPECÍFICO ========== */
+
         .status-badge.online { background: #d1fae5; color: #065f46; }
         .status-badge.offline { background: #fee2e2; color: #991b1b; }
         .last-seen { font-size: 0.8rem; color: #6c757d; }
@@ -136,6 +137,7 @@ $devices_result = $conn->query("SELECT * FROM devices ORDER BY id DESC");
             .filter-bar { flex-direction: column; align-items: stretch; }
             .search-box input { width: 100%; }
         }
+
     </style>
 </head>
 <body>

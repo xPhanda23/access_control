@@ -1,8 +1,4 @@
 <?php
-// ============================================
-// simulator.php - Simulador ESP32 (Teste de Acesso)
-// Versão completa com CSS/JS embutidos
-// ============================================
 
 require_once 'includes/auth.php';
 requireLogin();
@@ -58,13 +54,13 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Simulador ESP32 - AccessControl</title>
-    <!-- CSS global (caso exista, mas garantimos todos os estilos abaixo) -->
+    <title>AccessPoint - Simulador ESP32</title>
     <link rel="stylesheet" href="assets/style.css">
+
     <style>
-        /* ========== ESTILOS COMPLETOS DO SIMULADOR (garantia) ========== */
         * {
             margin: 0;
             padding: 0;
@@ -78,7 +74,6 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
             display: flex;
             min-height: 100vh;
         }
-        /* Cards e componentes */
         .simulator-card {
             background: white;
             border-radius: 24px;
@@ -212,6 +207,7 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
             .quick-cards { justify-content: center; }
             .log-item { flex-direction: column; align-items: flex-start; }
         }
+
     </style>
 </head>
 <body>
@@ -226,6 +222,7 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
         </div>
 
         <!-- Formulário principal -->
+
         <div class="simulator-card">
             <h2 style="margin-bottom: 20px;">📡 Testar Acesso com Cartão RFID</h2>
             <form method="POST" id="simulatorForm">
@@ -278,6 +275,7 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
         </div>
 
         <!-- Histórico de testes recentes -->
+
         <div class="simulator-card">
             <h2 style="margin-bottom: 16px;">🕒 Últimos Testes Realizados</h2>
             <?php if ($recent_tests && $recent_tests->num_rows > 0): ?>
@@ -305,6 +303,7 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
         </div>
 
         <!-- Bloco técnico -->
+
         <div style="background: #eef2ff; border-radius: 20px; padding: 24px; margin-top: 20px;">
             <h3 style="margin-bottom: 16px;">📡 Como o ESP32 se comunica com o sistema?</h3>
             <ul style="line-height: 1.7; margin-left: 20px;">
@@ -320,7 +319,7 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
 
 <script>
     (function() {
-        // Preenchimento rápido dos atalhos
+
         const uidInput = document.getElementById('card_uid');
         const quickCards = document.querySelectorAll('.quick-card');
         
@@ -333,7 +332,6 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
                     if (uid) {
                         uidInput.value = uid;
                     } else {
-                        // Fallback: extrair texto entre parênteses
                         const match = this.innerText.match(/\(([^)]+)\)/);
                         if (match) uidInput.value = match[1];
                     }
@@ -343,6 +341,7 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
         });
         
         // Validação antes de enviar o formulário
+
         const form = document.getElementById('simulatorForm');
         if (form) {
             form.addEventListener('submit', function(e) {
@@ -360,6 +359,7 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
             });
         }
     })();
+
 </script>
 </body>
 </html>

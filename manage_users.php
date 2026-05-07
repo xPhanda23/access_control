@@ -1,23 +1,17 @@
 <?php
-// ============================================
-// manage_users.php - Gerenciamento de Usuários
-// Apenas Administradores
-// ============================================
 
 require_once 'includes/auth.php';
 requireAdmin();
 
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
-// ============================================
-// VARIÁVEIS E AÇÕES
-// ============================================
 $message = '';
 $error = '';
 $editUser = null;
 $isEditing = false;
 
 // Excluir usuário (não permite excluir a si mesmo)
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $id = intval($_GET['delete']);
     if ($id == $_SESSION['user_id']) {
@@ -37,6 +31,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
 }
 
 // Buscar usuário para edição
+
 if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
     $id = intval($_GET['edit']);
     $result = $conn->query("SELECT * FROM users WHERE id = $id");
@@ -51,6 +46,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
 }
 
 // Processar formulário
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
     $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
@@ -128,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Mensagens da URL
+
 if (isset($_GET['msg'])) $message = urldecode($_GET['msg']);
 if (isset($_GET['err'])) $error = urldecode($_GET['err']);
 
@@ -136,12 +133,13 @@ $users_result = $conn->query("SELECT * FROM users ORDER BY id ASC");
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Usuários - AccessControl</title>
+    <title>AccessPoint - Gerenciar Usuários</title>
     <link rel="stylesheet" href="assets/style.css">
+
     <style>
-        /* ========== ESTILOS EXCLUSIVOS PARA ESTA PÁGINA ========== */
         .info-note {
             background: linear-gradient(135deg, #fef3c7, #fffbeb);
             border-left: 5px solid #f59e0b;
@@ -315,7 +313,6 @@ $users_result = $conn->query("SELECT * FROM users ORDER BY id ASC");
             .info-note { font-size: 0.8rem; padding: 14px; }
             .actions-cell { flex-direction: row; flex-wrap: wrap; }
         }
-        /* Garantia do estilo do botão primário (caso o global não esteja pegando) */
         .btn-primary {
             background: linear-gradient(105deg, #4361ee, #3a56d4);
             color: white;
@@ -347,10 +344,12 @@ $users_result = $conn->query("SELECT * FROM users ORDER BY id ASC");
             background: #5a6268;
             transform: translateY(-2px);
         }
+
     </style>
 </head>
 <body>
 <div class="app-container">
+
     <?php include 'includes/sidebar.php'; ?>
 
     <main class="main-content">
@@ -499,6 +498,7 @@ $users_result = $conn->query("SELECT * FROM users ORDER BY id ASC");
 </div>
 
 <script>
+
     let deleteId = null;
     const deleteModal = document.getElementById('deleteModal');
     const deleteMsg = document.getElementById('deleteMsg');
@@ -520,6 +520,7 @@ $users_result = $conn->query("SELECT * FROM users ORDER BY id ASC");
     deleteModal.addEventListener('click', (e) => {
         if (e.target === deleteModal) deleteModal.classList.remove('active');
     });
+
 </script>
 </body>
 </html>

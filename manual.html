@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>AccessPoint - Documentação Completa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --primary-light: #818cf8;
+            --secondary: #7209b7;
+            --success: #06d6a0;
+            --danger: #ef476f;
+            --warning: #ffd166;
+            --dark: #0f172a;
+            --gray-dark: #1e293b;
+            --gray: #64748b;
+            --gray-light: #94a3b8;
+            --light: #f8fafc;
+            --white: #ffffff;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --radius: 20px;
+            --radius-sm: 12px;
+            --transition: all 0.2s ease;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            background: #f1f5f9;
+            color: var(--gray-dark);
+            line-height: 1.5;
+        }
+        .docs-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .docs-sidebar {
+            width: 300px;
+            background: var(--dark);
+            backdrop-filter: blur(4px);
+            color: #cbd5e1;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: var(--transition);
+            z-index: 10;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            padding: 32px 24px 20px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, #a78bfa, #c084fc);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-align: center;
+        }
+
+        .sidebar-header p {
+            font-size: 0.75rem;
+            text-align: center;
+            margin-top: 8px;
+            color: var(--gray-light);
+        }
+
+        .docs-nav {
+            flex: 1;
+            padding: 20px 16px;
+        }
+        .docs-nav ul {
+            list-style: none;
+        }
+        .docs-nav li {
+            margin: 6px 0;
+        }
+        .docs-nav a {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 18px;
+            border-radius: 14px;
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: var(--transition);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .docs-nav a i {
+            width: 24px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        .docs-nav a:hover {
+            background: #1e293b;
+            color: white;
+            transform: translateX(4px);
+        }
+        .sidebar-footer {
+            padding: 20px 24px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.75rem;
+            text-align: center;
+            color: #64748b;
+        }
+        .docs-content {
+            flex: 1;
+            padding: 40px 48px;
+            max-width: calc(100% - 300px);
+        }
+
+        .doc-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 28px 32px;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid #eef2ff;
+        }
+        .doc-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, #1e2a5e, #2a3f7e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        h2 {
+            font-size: 1.7rem;
+            margin: 0 0 20px 0;
+            color: #0f172a;
+            border-left: 5px solid var(--primary);
+            padding-left: 18px;
+            font-weight: 600;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            margin: 28px 0 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #1e293b;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #e2e8f0;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 18px;
+            overflow-x: auto;
+            margin: 24px 0;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        code {
+            background: #f1f5f9;
+            color: #d14;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .grid-2, .grid-3 {
+            display: grid;
+            gap: 24px;
+            margin: 24px 0;
+        }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+        .info-card {
+            background: var(--light);
+            border-radius: 20px;
+            padding: 20px;
+            transition: var(--transition);
+            border: 1px solid #e2e8f0;
+        }
+        .info-card:hover { transform: translateY(-3px); background: white; box-shadow: var(--shadow); }
+
+        .note, .warning, .success {
+            padding: 18px 22px;
+            border-radius: 20px;
+            margin: 24px 0;
+        }
+        .note { background: #fef3c7; border-left: 6px solid var(--warning); }
+        .warning { background: #fee2e2; border-left: 6px solid var(--danger); }
+        .success { background: #d1fae5; border-left: 6px solid var(--success); }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 24px 0;
+            box-shadow: var(--shadow-sm);
+        }
+        .data-table th, .data-table td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .data-table th {
+            background: #f8fafc;
+            font-weight: 600;
+        }
+
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .doc-card {
+            animation: fadeInUp 0.4s ease backwards;
+        }
+        .doc-card:nth-child(1) { animation-delay: 0.05s; }
+        .doc-card:nth-child(2) { animation-delay: 0.1s; }
+        .doc-card:nth-child(3) { animation-delay: 0.15s; }
+
+        @media (max-width: 900px) {
+            .docs-wrapper { flex-direction: column; }
+            .docs-sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .docs-content {
+                max-width: 100%;
+                padding: 24px 20px;
+            }
+            h1 { font-size: 1.8rem; }
+        }
+
+.sidebar-footer {
+    padding: 20px 0 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 20px;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;  
+    background: rgba(239, 68, 68, 0.15);
+    border-radius: 12px;  
+    color: #f87171;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    width: 100%;         
+    box-sizing: border-box;
+}
+
+.logout-btn:hover {
+    background: #ef4444;
+    color: white;
+    transform: translateX(5px);
+}
+
+    </style>
+</head>
+<body>
+<div class="docs-wrapper">
+    <aside class="docs-sidebar">
+        <div>
+            <div class="sidebar-header">
+                <h2>AccessPoint</h2>
+            </div>
+            <div class="docs-nav">
+                <ul>
+                    <li><a href="#visao"><i class="fas fa-globe"></i> Visão Geral</a></li>
+                    <li><a href="#instalacao"><i class="fas fa-server"></i> Instalação</a></li>
+                    <li><a href="#arquitetura"><i class="fas fa-diagram-project"></i> Arquitetura</a></li>
+                    <li><a href="#perfis"><i class="fas fa-user-tag"></i> Perfis & Segurança</a></li>
+                    <li><a href="#telas"><i class="fas fa-tv"></i> Manual de Uso</a></li>
+                    <li><a href="#api"><i class="fas fa-microchip"></i> API ESP32</a></li>
+                    <li><a href="#database"><i class="fas fa-database"></i> Modelo de Dados</a></li>
+                    <li><a href="#codigo"><i class="fas fa-code-branch"></i> Código & Boas Práticas</a></li>
+                    <li><a href="#erros"><i class="fas fa-bug"></i> Tratamento de Erros</a></li>
+                    <li><a href="#roadmap"><i class="fas fa-road"></i> Roadmap</a></li>
+                    <li><a href="#faq"><i class="fas fa-question-circle"></i> FAQ</a></li>
+                    <div class="sidebar-footer">
+    <a href="login.php" class="logout-btn">
+        <i class="fas fa-sign-out-alt"></i> Sair
+    </a>
+</div>
+                </ul>
+            </div>
+        </div>
+    </aside>
+
+    <main class="docs-content">
+
+        <!-- 1. VISÃO GERAL -->
+
+        <div class="doc-card" id="visao">
+            <h1>AccessPoint – Documentação Técnica & Manual</h1>
+            <p>Plataforma completa para gerenciamento de acesso físico em escolas, utilizando cartões RFID e módulos ESP32. <br>
+            <strong>Funcionalidades:</strong> cadastro de cartões, permissões granulares por porta, logs em tempo real, interface responsiva e API REST para hardware.</p>
+            <div class="success">
+                <i class="fas fa-check-circle"></i> <strong>Totalmente funcional</strong> – pronto para implementação.
+            </div>
+        </div>
+
+        <!-- 2. INSTALAÇÃO PASSO A PASSO -->
+
+        <div class="doc-card" id="instalacao">
+            <h2>🚀 Instalação & Configuração</h2>
+            <ol style="margin-left: 24px; line-height: 1.7;">
+                <li><strong>XAMPP</strong> – inicie Apache e MySQL.</li>
+                <li><strong>Baixar projeto</strong> – copie a pasta <code>access_control</code> para <code>htdocs</code>.</li>
+                <li><strong>Banco de dados</strong> – crie um schema <code>access_control</code> no phpMyAdmin e importe <code>database.sql</code>.</li>
+                <li><strong>Credenciais</strong> – configure <code>includes/db.php</code> (padrão: root / sem senha).</li>
+                <li><strong>Usuários iniciais</strong> – acesse <code>fix_users.php</code> para gerar admin/admin123 e direcao/direcao123.</li>
+                <li><strong>Acesse</strong> → <code>http://localhost/access_control/login.php</code></li>
+            </ol>
+            <div class="note"><i class="fas fa-info-circle"></i> O sistema já vem com cartões e dispositivos de exemplo para testes rápidos.</div>
+        </div>
+
+        <!-- 3. ARQUITETURA DETALHADA -->
+
+        <div class="doc-card" id="arquitetura">
+            <h2>🏗️ Arquitetura do Sistema</h2>
+            <div class="grid-2">
+                <div class="info-card"><i class="fas fa-layer-group"></i> <strong>Front-end</strong><br>HTML5, CSS3 (Flex/Grid), JavaScript (Fetch API, modais). Integração com REST via AJAX.</div>
+                <div class="info-card"><i class="fas fa-server"></i> <strong>Back-end</strong><br>PHP 7.4+ com prepared statements, controle de sessão, password_hash().</div>
+                <div class="info-card"><i class="fas fa-database"></i> <strong>Banco de dados</strong><br>MySQL – tabelas otimizadas com chaves estrangeiras e índices.</div>
+                <div class="info-card"><i class="fas fa-microchip"></i> <strong>Hardware</strong><br>ESP32 + leitor RFID (MFRC522) – comunicação via HTTP POST com JSON.</div>
+            </div>
+            <pre>
+FLUXO DE COMUNICAÇÃO:
+
+[Cartão RFID] → ESP32 (leitura UID) → POST /api/verify_card.php → verificação no banco → resposta {open_door} → ESP32 aciona trava → log registrado.
+            </pre>
+        </div>
+
+        <!-- 4. PERFIS & SEGURANÇA -->
+
+        <div class="doc-card" id="perfis">
+            <h2>👥 Perfis e Controle de Acesso</h2>
+            <table class="data-table">
+                <thead><tr><th>Perfil</th><th>Permissões</th><th>Acesso a usuários</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="badge">👑 Administrador</span></td><td>Total: CRUD de cartões, dispositivos, usuários, logs, configurações.</td><td>✅ Sim</td></tr>
+                    <tr><td><span class="badge">📋 Direção</span></td><td>Gerencia cartões e dispositivos, vê logs, sem acesso a usuários.</td><td>❌ Não</td></tr>
+                </tbody>
+            </table>
+            <p>Todas as páginas sensíveis possuem verificação via <code>requireAdmin()</code>. As senhas são armazenadas com bcrypt (hash seguro).</p>
+        </div>
+
+        <!-- 5. MANUAL DE TELAS (interativo) -->
+
+        <div class="doc-card" id="telas">
+            <h2>🖥️ Manual de Uso – Telas do Sistema</h2>
+            <div class="grid-3">
+                <div class="info-card"><i class="fas fa-chalkboard-user"></i> <strong>Dashboard</strong><br>Estatísticas, gráficos de cartões por tipo, dispositivos online/offline e última atividade.</div>
+                <div class="info-card"><i class="fas fa-id-card"></i> <strong>Cartões</strong><br>Adicionar, editar, duplicar, alternar status, definir permissões de portas e testar acesso via API.</div>
+                <div class="info-card"><i class="fas fa-wifi"></i> <strong>Dispositivos</strong><br>Cadastrar ESP32, simular online/offline e associar permissões aos cartões.</div>
+                <div class="info-card"><i class="fas fa-users-gear"></i> <strong>Usuários (Admin)</strong><br>Criar/editar/excluir contas de direção ou outros administradores.</div>
+                <div class="info-card"><i class="fas fa-list"></i> <strong>Logs</strong><br>Filtros por UID, dispositivo, data e resultado. Visualização detalhada de cada tentativa.</div>
+                <div class="info-card"><i class="fas fa-flask"></i> <strong>Simulador ESP32</strong><br>Teste o comportamento da API sem hardware – ideal para validar permissões.</div>
+            </div>
+            <div class="success">📌 Dica: utilize o botão "Testar" nos cartões para simular um acesso a qualquer dispositivo e ver a resposta em tempo real.</div>
+        </div>
+
+        <!-- 6. API E INTEGRAÇÃO COM ESP32 -->
+
+        <div class="doc-card" id="api">
+            <h2>📡 Integração Técnica – ESP32</h2>
+            <p><strong>Endpoint:</strong> <code>POST http://IP_DO_SERVIDOR/access_control/api/verify_card.php</code><br>
+            <strong>Headers:</strong> <code>Content-Type: application/json</code></p>
+            <pre>{
+  "card_uid": "12345678",
+  "device_id": 2
+}</pre>
+            <p><strong>Resposta (acesso liberado):</strong></p>
+            <pre>{
+  "success": true,
+  "message": "Acesso liberado para Laboratório de Informática",
+  "open_door": true
+}</pre>
+            <p><strong>Resposta (negado):</strong></p>
+            <pre>{
+  "success": false,
+  "message": "Cartão bloqueado ou sem permissão.",
+  "open_door": false
+}</pre>
+            <h3>🔌 Código de exemplo para ESP32 (Arduino IDE)</h3>
+            <pre>#include &lt;WiFi.h&gt;
+#include &lt;HTTPClient.h&gt;
+
+const char* server = "http://192.168.0.100/access_control/api/verify_card.php";
+
+void loop() {
+  if (rfid_presente) {
+    HTTPClient http;
+    http.begin(server);
+    http.addHeader("Content-Type", "application/json");
+    String payload = "{\"card_uid\":\"" + uidString + "\",\"device_id\":1}";
+    int httpCode = http.POST(payload);
+    if (httpCode == 200) {
+      String resposta = http.getString();
+      if (resposta.indexOf("\"open_door\":true") != -1) {
+        digitalWrite(RELAY_PIN, HIGH);
+        delay(3000);
+        digitalWrite(RELAY_PIN, LOW);
+      }
+    }
+    http.end();
+  }
+}</pre>
+        </div>
+
+        <!-- 7. MODELO DE DADOS -->
+
+        <div class="doc-card" id="database">
+            <h2>🗄️ Modelo de Dados (MySQL)</h2>
+            <table class="data-table">
+                <tr><th>Tabela</th><th>Campos principais</th><th>Relacionamento</th></tr>
+                <tr><td>users</td><td>id, username, password, fullname, role</td><td>-</td></tr>
+                <tr><td>cards</td><td>id, card_uid, holder_name, holder_type, status</td><td>N:N com devices via card_access</td></tr>
+                <tr><td>devices</td><td>id, device_name, location, status, last_seen</td><td>N:N com cards</td></tr>
+                <tr><td>card_access</td><td>card_id, device_id</td><td>Tabela pivot de permissões</td></tr>
+                <tr><td>access_logs</td><td>card_uid, device_id, access_granted, message, created_at</td><td>Histórico de tentativas</td></tr>
+            </table>
+            <div class="note">🔹 A unicidade do <code>card_uid</code> evita duplicidade; o status 'active' ou 'blocked' controla a liberação.</div>
+        </div>
+
+        <!-- 8. EXPLICAÇÃO DO CÓDIGO E BOAS PRÁTICAS -->
+
+        <div class="doc-card" id="codigo">
+            <h2>💻 Estrutura do Código e Boas Práticas</h2>
+            <p><strong>Segurança</strong> – todas as consultas utilizam <code>prepared statements</code> para evitar SQL Injection.</p>
+            <pre>$stmt = $conn->prepare("INSERT INTO cards (card_uid, holder_name) VALUES (?, ?)");
+$stmt->bind_param("ss", $uid, $nome);
+$stmt->execute();</pre>
+            <p><strong>Controle de sessão</strong> em <code>includes/auth.php</code>:</p>
+            <pre>session_start();
+function isLoggedIn() { return isset($_SESSION['user_id']); }
+function requireAdmin() { if ($_SESSION['user_role'] != 'admin') die("Acesso negado"); }</pre>
+            <p><strong>API central</strong> – o arquivo <code>api/verify_card.php</code> processa as requisições do ESP32 e registra os logs automaticamente.</p>
+            <div class="success">✅ Código comentado e organizado – fácil de manter e expandir.</div>
+        </div>
+
+        <!-- 9. TRATAMENTO DE ERROS COMUNS -->
+
+        <div class="doc-card" id="erros">
+            <h2>⚠️ Tratamento de Erros & Troubleshooting</h2>
+            <table class="data-table">
+                <thead><tr><th>Erro</th><th>Causa</th><th>Solução</th></tr></thead>
+                <tbody>
+                    <tr><td>Duplicate entry key</td><td>UID de cartão já existe</td><td>Escolha outro UID ou exclua o cartão existente.</td></tr>
+                    <tr><td>Login recarrega sem mensagem</td><td>session_start() em falta ou duplicada</td><td>Verifique <code>auth.php</code> – deve iniciar a sessão apenas uma vez.</td></tr>
+                    <tr><td>API retorna 404 no simulador</td><td>Caminho incorreto da API</td><td>Confira a URL em <code>simulator.php</code> e se o arquivo existe em <code>api/</code>.</td></tr>
+                    <tr><td>Falha ao conectar ao banco</td><td>MySQL desligado ou credenciais erradas</td><td>Inicie o MySQL no XAMPP e verifique <code>db.php</code>.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 10. ROADMAP E IMPLEMENTAÇÕES FUTURAS -->
+
+        <div class="doc-card" id="roadmap">
+            <h2>🚀 Roadmap – Próximas Evoluções</h2>
+            <div class="grid-2">
+                <div class="info-card"><i class="fas fa-shield-alt"></i> <strong>2FA (Autenticação de dois fatores)</strong><br>Adicionar TOTP para administradores.</div>
+                <div class="info-card"><i class="fas fa-mobile-alt"></i> <strong>Aplicativo Mobile</strong><br>App para direção acompanhar logs e liberar portas remotamente.</div>
+                <div class="info-card"><i class="fas fa-chart-line"></i> <strong>Dashboard Analítico</strong><br>Gráficos interativos com Chart.js; estatísticas de horários de pico.</div>
+                <div class="info-card"><i class="fas fa-cloud-upload-alt"></i> <strong>Firmware OTA para ESP32</strong><br>Atualização remota dos dispositivos.</div>
+            </div>
+        </div>
+
+        <!-- 11. PERGUNTAS FREQUENTES (FAQ) -->
+
+        <div class="doc-card" id="faq">
+            <h2>❓ Perguntas Frequentes (FAQ)</h2>
+            <div class="info-card"><strong>❓ O sistema funciona apenas com XAMPP?</strong><br>Pode ser usado em qualquer servidor Apache + PHP + MySQL (WAMP, LAMP, Docker).</div>
+            <div class="info-card"><strong>❓ Como um cartão é liberado em determinada porta?</strong><br>No cadastro do cartão, marque o(s) dispositivo(s) na seção "Permissões de Acesso".</div>
+            <div class="info-card"><strong>❓ O ESP32 pode estar em outra rede?</strong><br>Sim, desde que o servidor tenha IP acessível e as portas estejam liberadas.</div>
+            <div class="info-card"><strong>❓ O simulador substitui o hardware?</strong><br>Para testes de lógica de permissão, sim. Para a apresentação, comprova que a API responde corretamente.</div>
+        </div>
+
+        <!-- rodapé -->
+
+        <div style="background: white; border-radius: 24px; padding: 24px; text-align: center; margin-top: 30px;">
+            <p><i class="fas fa-book-open"></i> Documentação completa – AccessControl v2.0</p>
+            <p>Desenvolvido para Trabalho de Conclusão de Curso – Controle de Acesso Escolar com RFID e ESP32</p>
+            <p style="font-size: 0.8rem;">Última atualização: <?php echo date('d/m/Y H:i:s'); ?></p>
+        </div>
+
+    </main>
+</div>
+
+<script>
+    // animação suave para os links da sidebar
+    document.querySelectorAll('.docs-nav a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            // remove active de todos e adiciona ao atual
+            document.querySelectorAll('.docs-nav a').forEach(a => a.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+    // highlight do primeiro link por padrão
+    document.querySelector('.docs-nav a')?.classList.add('active');
+</script>
+</body>
+</html>

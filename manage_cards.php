@@ -1,23 +1,17 @@
 <?php
-// ============================================
-// manage_cards.php - Gerenciamento de Cartões
-// Versão com layout profissional e sem alert()
-// ============================================
 
 require_once 'includes/auth.php';
 requireLogin();
 
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
-// ============================================
-// TRATAMENTO DE MENSAGENS E AÇÕES
-// ============================================
 $message = '';
 $error = '';
 $editCard = null;
 $isEditing = false;
 
 // Ações via GET
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $id = intval($_GET['delete']);
     $conn->query("DELETE FROM card_access WHERE card_id = $id");
@@ -73,6 +67,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
 }
 
 // Processar formulário
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
     $card_id = isset($_POST['card_id']) ? intval($_POST['card_id']) : 0;
@@ -145,10 +140,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Recuperar mensagens
+
 if (isset($_GET['msg'])) $message = urldecode($_GET['msg']);
 if (isset($_GET['err'])) $error = urldecode($_GET['err']);
 
 // Listar cartões
+
 $cards_result = $conn->query("
     SELECT c.*, GROUP_CONCAT(d.device_name SEPARATOR ', ') as devices_names
     FROM cards c
@@ -168,12 +165,13 @@ if ($isEditing && $editCard) {
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Cartões - AccessControl</title>
+    <title>AccessPoint - Gerenciar Cartões</title>
     <link rel="stylesheet" href="assets/style.css">
+
     <style>
-        /* ========== LAYOUT COMPLETO E ALINHADO ========== */
         * {
             margin: 0;
             padding: 0;
@@ -387,6 +385,7 @@ if ($isEditing && $editCard) {
             .filter-bar { flex-direction: column; align-items: stretch; }
             .search-box input { width: 100%; }
         }
+
     </style>
 </head>
 <body>
@@ -398,6 +397,7 @@ if ($isEditing && $editCard) {
         <h1 style="margin-bottom: 24px;">💳 Gerenciamento de Cartões</h1>
 
         <!-- Barra de filtros e busca -->
+
         <div class="filter-bar">
             <div class="search-box">
                 🔍 <input type="text" id="searchInput" placeholder="Nome ou UID...">
@@ -412,10 +412,12 @@ if ($isEditing && $editCard) {
         </div>
 
         <!-- Mensagens de retorno -->
+
         <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-error"><?php echo $error; ?></div><?php endif; ?>
 
         <!-- Formulário -->
+
         <div class="card-form">
             <h2 style="margin-bottom: 24px;"><?php echo $isEditing ? '✏️ Editar Cartão' : '➕ Novo Cartão'; ?></h2>
             <form method="POST" id="cardForm">
@@ -439,6 +441,7 @@ if ($isEditing && $editCard) {
         </div>
 
         <!-- Tabela -->
+
         <h2 style="margin: 32px 0 16px;">📋 Cartões Cadastrados</h2>
         <div style="overflow-x: auto;">
             <table class="data-table" id="cardsTable">
@@ -476,7 +479,9 @@ if ($isEditing && $editCard) {
 <div id="testModal" class="modal"><div class="modal-content"><h3>📡 Teste de Acesso</h3><p id="testMsg">Verificando...</p><div class="modal-buttons"><button id="closeTestModal">Fechar</button></div></div></div>
 
 <script>
+
     // Filtros
+
     const searchInput = document.getElementById('searchInput');
     const typeFilter = document.getElementById('typeFilter');
     const statusFilter = document.getElementById('statusFilter');
@@ -497,9 +502,11 @@ if ($isEditing && $editCard) {
     statusFilter.addEventListener('change', filterTable);
 
     // Copiar UID
+
     document.querySelectorAll('.copy-uid').forEach(btn => btn.addEventListener('click', () => { navigator.clipboard.writeText(btn.dataset.uid); mostrarModalMensagem('✅ UID copiado!'); }));
 
     // Alternar status via fetch (sem recarregar automaticamente)
+
     document.querySelectorAll('.btn-toggle').forEach(btn => btn.addEventListener('click', async (e) => {
         e.preventDefault();
         const id = btn.dataset.id;
@@ -509,6 +516,7 @@ if ($isEditing && $editCard) {
     }));
 
     // Duplicar
+
     document.querySelectorAll('[data-duplicate]').forEach(btn => btn.addEventListener('click', (e) => {
         e.preventDefault();
         const id = btn.dataset.duplicate;
@@ -516,6 +524,7 @@ if ($isEditing && $editCard) {
     }));
 
     // Exclusão modal
+
     let deleteId = null;
     const deleteModal = document.getElementById('deleteModal');
     const deleteMsg = document.getElementById('deleteMsg');
@@ -530,6 +539,7 @@ if ($isEditing && $editCard) {
     deleteModal.addEventListener('click', (e) => { if(e.target === deleteModal) deleteModal.classList.remove('active'); });
 
     // Teste com API
+
     const testModal = document.getElementById('testModal');
     const testMsg = document.getElementById('testMsg');
     document.querySelectorAll('.btn-test').forEach(btn => btn.addEventListener('click', async (e) => {
@@ -560,6 +570,7 @@ if ($isEditing && $editCard) {
         modal.querySelector('.modal-confirm').onclick = () => { modal.remove(); callback(); };
         modal.querySelector('.modal-cancel').onclick = () => modal.remove();
     }
+
 </script>
 </body>
 </html>

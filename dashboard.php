@@ -1,17 +1,13 @@
 <?php
-// ============================================
-// dashboard.php - Painel de Controle Principal
-// ============================================
 
 require_once 'includes/auth.php';
 requireLogin();
 
-// ============================================
 // CONFIGURAÇÃO DE DATA/HORA DO BRASIL
-// ============================================
 date_default_timezone_set('America/Sao_Paulo');
 
-// Array com dias da semana em português
+// Array com dias da semana
+
 $dias_semana = [
     'Sunday' => 'Domingo',
     'Monday' => 'Segunda-feira',
@@ -44,6 +40,7 @@ $ano = date('Y');
 $hora_num = (int)date('H');
 
 // Saudação baseada na hora
+
 if ($hora_num < 12) {
     $saudacao = "Bom dia";
 } elseif ($hora_num < 18) {
@@ -59,9 +56,11 @@ $data_atual_str = "$dia_semana_br, $dia_numero de $mes_br de $ano";
 // ============================================
 // DADOS DO BANCO
 // ============================================
+
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
 // Totais gerais
+
 $result = $conn->query("SELECT COUNT(*) AS total FROM cards WHERE status='active'");
 $total_cards = $result->fetch_assoc()['total'] ?? 0;
 
@@ -72,6 +71,7 @@ $result = $conn->query("SELECT COUNT(*) AS total FROM access_logs WHERE DATE(cre
 $logs_hoje = $result->fetch_assoc()['total'] ?? 0;
 
 // Cartões por tipo
+
 $tipos_result = $conn->query("SELECT holder_type, COUNT(*) as total FROM cards GROUP BY holder_type");
 $cards_por_tipo = [
     'aluno' => 0,
@@ -84,9 +84,11 @@ while ($row = $tipos_result->fetch_assoc()) {
 }
 
 // Dispositivos com status
+
 $devices_result = $conn->query("SELECT id, device_name, location, status, last_seen FROM devices ORDER BY id");
 
 // Últimos 5 logs
+
 $ultimos_logs = $conn->query("SELECT * FROM access_logs ORDER BY created_at DESC LIMIT 5");
 
 $role = $_SESSION['user_role'];
@@ -95,12 +97,13 @@ $fullname = $_SESSION['user_fullname'];
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Dashboard - Controle de Acesso Escolar</title>
+    <title>AccessPoint - Dashboard</title>
     <link rel="stylesheet" href="assets/style.css">
+
     <style>
-        /* Estilos específicos complementares (melhor contraste) */
         .devices-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -168,7 +171,6 @@ $fullname = $_SESSION['user_fullname'];
                 grid-template-columns: 1fr;
             }
         }
-        /* Ajuste adicional para o banner do relógio */
         .datetime-banner {
             background: linear-gradient(105deg, #1e2a5e, #2a3f7e);
             font-weight: 500;
@@ -188,42 +190,43 @@ $fullname = $_SESSION['user_fullname'];
 </head>
 <body>
     <div class="app-container">
-        <!-- SIDEBAR PADRONIZADA (via include) -->
+
         <?php include 'includes/sidebar.php'; ?>
 
-        <!-- CONTEÚDO PRINCIPAL -->
+
         <main class="main-content">
-            <!-- Banner com data e relógio interativo -->
             <div class="datetime-banner">
                 <span>📅 <?php echo $data_atual_str; ?></span>
                 <span>🕒 <span id="liveClock">--:--:--</span></span>
             </div>
 
             <!-- Saudação personalizada -->
+
             <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                 <h1 style="margin: 0; font-size: 24px;"><?php echo $saudacao; ?>, <?php echo htmlspecialchars($fullname); ?>!</h1>
                 <p style="color: #6c757d; margin-top: 8px;">Perfil: <?php echo ($role == 'admin') ? 'Administrador' : 'Direção'; ?></p>
             </div>
 
             <!-- Cards de estatísticas principais -->
+
             <div class="cards-stats">
                 <div class="stat-card">
                     <div class="stat-icon">💳</div>
                     <h3>Cartões Ativos</h3>
                     <div class="stat-number"><?php echo $total_cards; ?></div>
                     <div class="progress-bar-sim">
-                        <div class="progress-fill" style="width: <?php echo min(100, ($total_cards / 100) * 100); ?>%"></div>
+                        <div class="progress-fill" style="width: <?php echo min(100, ($total_cards / 75) * 100); ?>%"></div>
                     </div>
-                    <small>meta: 100 cartões</small>
+                    <small>capacidade: 75 cartões</small>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">📡</div>
                     <h3>Dispositivos (ESP32)</h3>
                     <div class="stat-number"><?php echo $total_devices; ?></div>
                     <div class="progress-bar-sim">
-                        <div class="progress-fill" style="width: <?php echo min(100, ($total_devices / 20) * 100); ?>%"></div>
+                        <div class="progress-fill" style="width: <?php echo min(100, ($total_devices / 10) * 100); ?>%"></div>
                     </div>
-                    <small>capacidade: 20</small>
+                    <small>capacidade: 10</small>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">📋</div>
@@ -237,6 +240,7 @@ $fullname = $_SESSION['user_fullname'];
             </div>
 
             <!-- Gráfico de Cartões por Tipo -->
+
             <div class="chart-container">
                 <h3>📊 Cartões por Tipo</h3>
                 <?php
@@ -263,6 +267,7 @@ $fullname = $_SESSION['user_fullname'];
             </div>
 
             <!-- Seção: Status dos Dispositivos (ESP32) -->
+
             <div style="background: white; border-radius: 16px; padding: 20px; margin: 30px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                 <h3 style="margin-bottom: 15px;">📡 Status dos Dispositivos (ESP32)</h3>
                 <div class="devices-grid">
@@ -286,6 +291,7 @@ $fullname = $_SESSION['user_fullname'];
             </div>
 
             <!-- Últimos Acessos Registrados (Timeline) -->
+
             <div class="timeline">
                 <h3>🕒 Últimos Acessos Registrados</h3>
                 <?php if ($ultimos_logs && $ultimos_logs->num_rows > 0): ?>
@@ -312,12 +318,13 @@ $fullname = $_SESSION['user_fullname'];
             </div>
 
             <!-- Visão Geral do Sistema -->
+
             <div class="overview-cards">
                 <div class="overview-card">
                     <h3>📌 Resumo Operacional</h3>
                     <ul style="margin-top: 12px; line-height: 1.6; padding-left: 20px;">
                         <li><strong><?php echo $total_cards; ?></strong> cartões ativos em circulação.</li>
-                        <li><strong><?php echo $total_devices; ?></strong> pontos de acesso (ESP32) monitorando portas.</li>
+                        <li><strong><?php echo $total_devices; ?></strong> pontos de acesso (ESP32).</li>
                         <li>Comunidade escolar acessa áreas permitidas com cartão RFID.</li>
                         <li>Direção gerencia cartões, dispositivos e acompanha logs em tempo real.</li>
                         <li>Administrador possui controle total do sistema e usuários.</li>
@@ -328,7 +335,9 @@ $fullname = $_SESSION['user_fullname'];
     </div>
 
     <script>
-        // RELÓGIO INTERATIVO (atualiza a cada segundo)
+
+        // RELÓGIO INTERATIVO
+
         function updateClock() {
             const now = new Date();
             const options = { timeZone: 'America/Sao_Paulo', hour12: false };
@@ -340,6 +349,7 @@ $fullname = $_SESSION['user_fullname'];
         updateClock();
 
         // Animação das barras de progresso
+
         document.addEventListener('DOMContentLoaded', function() {
             const fills = document.querySelectorAll('.progress-fill, .chart-fill');
             fills.forEach(fill => {
