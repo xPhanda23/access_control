@@ -1,4 +1,4 @@
-# 🔐 AccessControl - Sistema de Controle de Acesso Escolar
+# 🔐 AccessPoint - Sistema de Controle de Acesso Escolar
 
 Sistema web completo para gestão de controle de acesso em escolas utilizando cartões RFID e ESP32. Desenvolvido com PHP, MySQL, HTML/CSS/JS, e arquitetura pronta para integração com hardware real.
 
@@ -13,7 +13,7 @@ Sistema web completo para gestão de controle de acesso em escolas utilizando ca
 
 ## 📋 Sobre o Projeto
 
-O **AccessControl** é um sistema de gerenciamento de acesso físico para instituições de ensino. Ele permite:
+O **AccessPoint** é um sistema de gerenciamento de acesso físico para instituições de ensino. Ele permite:
 
 - Cadastro de cartões RFID com permissões granulares por porta/dispositivo.
 - Gerenciamento de dispositivos ESP32 (portas, salas, laboratórios).
