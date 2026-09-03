@@ -1,37 +1,47 @@
 <?php
 header('Content-Type: application/json');
 require_once '../includes/db.php';
+require_once '../includes/device_helpers.php';
 
-// Endpoint que o ESP32 chamará via POST
-// Espera receber: card_uid e device_id (ou device_name)
+// Endpoint que o ESP32 chama via POST ao ler um cartão.
+// Aceita dois jeitos de identificar o dispositivo:
+//  - mac_address: usado pelo ESP32 real. Resolve/cria o dispositivo e marca
+//    status/last_seen como prova de comunicação real.
+//  - device_id: usado pelas telas internas de teste (Simulador, botão
+//    "Testar" em Cartões de Acesso), que já apontam pra um dispositivo
+//    existente. Não mexe em status/last_seen — testar um cartão pelo painel
+//    não pode fingir que o ESP32 está online.
 
 $input = json_decode(file_get_contents('php://input'), true);
 if (!$input) {
-    // tentar GET também para simular
     $input = $_GET;
 }
 
 $card_uid = $input['card_uid'] ?? '';
-$device_id = $input['device_id'] ?? 0;
-$device_name = '';
+$mac_address = isset($input['mac_address']) ? trim($input['mac_address']) : '';
+$device_id = isset($input['device_id']) ? intval($input['device_id']) : 0;
 
-if (!$card_uid || !$device_id) {
+if (!$card_uid || (!$mac_address && !$device_id)) {
     echo json_encode(['success' => false, 'message' => 'Dados incompletos']);
     exit;
 }
 
-// Buscar dispositivo
-
-$devStmt = $conn->prepare("SELECT device_name FROM devices WHERE id = ?");
-$devStmt->bind_param("i", $device_id);
-$devStmt->execute();
-$devResult = $devStmt->get_result();
-if ($devResult->num_rows == 0) {
-    echo json_encode(['success' => false, 'message' => 'Dispositivo não encontrado']);
-    exit;
+if ($mac_address) {
+    $device = getOrCreateDeviceByMac($conn, $mac_address);
+    $device_id = (int)$device['id'];
+    $device_name = $device['device_name'];
+} else {
+    $devStmt = $conn->prepare("SELECT id, device_name FROM devices WHERE id = ?");
+    $devStmt->bind_param("i", $device_id);
+    $devStmt->execute();
+    $devResult = $devStmt->get_result();
+    if ($devResult->num_rows == 0) {
+        echo json_encode(['success' => false, 'message' => 'Dispositivo não encontrado']);
+        exit;
+    }
+    $device = $devResult->fetch_assoc();
+    $device_name = $device['device_name'];
 }
-$device = $devResult->fetch_assoc();
-$device_name = $device['device_name'];
 
 // Verificar cartão
 
@@ -61,7 +71,7 @@ $permStmt->bind_param("ii", $card['id'], $device_id);
 $permStmt->execute();
 $permResult = $permStmt->get_result();
 if ($permResult->num_rows == 0) {
-    $msg = "Este cartão não tem permissão para acessar este local.";
+    $msg = "Sem permissao";
     logAccess($card_uid, $device_id, $device_name, false, $msg);
     echo json_encode(['success' => false, 'message' => $msg]);
     exit;

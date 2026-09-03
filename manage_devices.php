@@ -2,6 +2,7 @@
 
 require_once 'includes/auth.php';
 requireLogin();
+require_once 'includes/device_helpers.php';
 
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
@@ -9,16 +10,6 @@ $message = '';
 $error = '';
 $editDevice = null;
 $isEditing = false;
-
-// Alternar status online/offline (simulação)
-
-if (isset($_GET['toggle_status']) && is_numeric($_GET['toggle_status'])) {
-    $id = intval($_GET['toggle_status']);
-    $conn->query("UPDATE devices SET status = IF(status='online', 'offline', 'online'), last_seen = NOW() WHERE id = $id");
-    $message = "✅ Status do dispositivo alterado com sucesso!";
-    header("Location: manage_devices.php?msg=" . urlencode($message));
-    exit;
-}
 
 // Excluir dispositivo
 
@@ -50,39 +41,28 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
     }
 }
 
-// Processar formulário (criar / atualizar)
+// Processar formulário (só edição de nome/localização - dispositivos são
+// criados automaticamente quando um ESP32 real se conecta, nunca manualmente)
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $action = $_POST['action'] ?? '';
     $device_id = isset($_POST['device_id']) ? intval($_POST['device_id']) : 0;
     $device_name = trim($_POST['device_name']);
     $location = trim($_POST['location']);
-    $status = $_POST['status'] ?? 'offline';
 
     $errors = [];
     if (empty($device_name)) $errors[] = "O nome do dispositivo é obrigatório.";
     if (strlen($device_name) < 3) $errors[] = "Nome muito curto (mínimo 3 caracteres).";
+    if ($device_id <= 0) $errors[] = "Dispositivo inválido.";
 
     if (empty($errors)) {
-        if ($action == 'create') {
-            $stmt = $conn->prepare("INSERT INTO devices (device_name, location, status) VALUES (?, ?, ?)");
-            $stmt->bind_param("sss", $device_name, $location, $status);
-            if ($stmt->execute()) {
-                $message = "✅ Dispositivo criado com sucesso!";
-            } else {
-                $error = "❌ Erro ao criar: " . $conn->error;
-            }
-            $stmt->close();
-        } elseif ($action == 'update' && $device_id > 0) {
-            $stmt = $conn->prepare("UPDATE devices SET device_name=?, location=?, status=? WHERE id=?");
-            $stmt->bind_param("sssi", $device_name, $location, $status, $device_id);
-            if ($stmt->execute()) {
-                $message = "✅ Dispositivo atualizado com sucesso!";
-            } else {
-                $error = "❌ Erro ao atualizar: " . $conn->error;
-            }
-            $stmt->close();
+        $stmt = $conn->prepare("UPDATE devices SET device_name=?, location=? WHERE id=?");
+        $stmt->bind_param("ssi", $device_name, $location, $device_id);
+        if ($stmt->execute()) {
+            $message = "✅ Dispositivo atualizado com sucesso!";
+        } else {
+            $error = "❌ Erro ao atualizar: " . $conn->error;
         }
+        $stmt->close();
     } else {
         $error = implode("<br>", $errors);
     }
@@ -116,6 +96,7 @@ $devices_result = $conn->query("SELECT * FROM devices ORDER BY id DESC");
 
         .status-badge.online { background: #d1fae5; color: #065f46; }
         .status-badge.offline { background: #fee2e2; color: #991b1b; }
+        .mac-cell { font-family: monospace; font-size: 0.8rem; color: #475569; }
         .last-seen { font-size: 0.8rem; color: #6c757d; }
         .actions-cell { display: flex; flex-wrap: wrap; gap: 8px; }
         .btn-small { padding: 5px 12px; border-radius: 30px; font-size: 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border: none; background: #f1f5f9; color: #1e293b; transition: 0.2s; }
@@ -160,59 +141,58 @@ $devices_result = $conn->query("SELECT * FROM devices ORDER BY id DESC");
         <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-error"><?php echo $error; ?></div><?php endif; ?>
 
-        <!-- Formulário de criação/edição -->
+        <!-- Formulário de edição (dispositivos só aparecem aqui quando um ESP32 real se conecta) -->
+        <?php if ($isEditing): ?>
         <div class="card-form">
-            <h2 style="margin-bottom: 24px;"><?php echo $isEditing ? '✏️ Editar Dispositivo' : '➕ Adicionar Dispositivo'; ?></h2>
+            <h2 style="margin-bottom: 24px;">✏️ Editar Dispositivo</h2>
             <form method="POST">
-                <input type="hidden" name="action" value="<?php echo $isEditing ? 'update' : 'create'; ?>">
-                <?php if ($isEditing): ?><input type="hidden" name="device_id" value="<?php echo $editDevice['id']; ?>"><?php endif; ?>
+                <input type="hidden" name="device_id" value="<?php echo $editDevice['id']; ?>">
                 <div class="form-grid">
                     <div class="input-group">
                         <label>📛 Nome do dispositivo *</label>
-                        <input type="text" name="device_name" value="<?php echo $isEditing ? htmlspecialchars($editDevice['device_name']) : ''; ?>" required placeholder="ex: Sala de Robótica">
+                        <input type="text" name="device_name" value="<?php echo htmlspecialchars($editDevice['device_name']); ?>" required placeholder="ex: Sala de Robótica">
                     </div>
                     <div class="input-group">
                         <label>📍 Localização</label>
-                        <input type="text" name="location" value="<?php echo $isEditing ? htmlspecialchars($editDevice['location']) : ''; ?>" placeholder="ex: Sala 02">
-                    </div>
-                    <div class="input-group">
-                        <label>⚡ Status (inicial)</label>
-                        <select name="status">
-                            <option value="online" <?php echo ($isEditing && $editDevice['status']=='online') ? 'selected' : ''; ?>>Online</option>
-                            <option value="offline" <?php echo ($isEditing && $editDevice['status']=='offline') ? 'selected' : ''; ?>>Offline</option>
-                        </select>
+                        <input type="text" name="location" value="<?php echo htmlspecialchars($editDevice['location']); ?>" placeholder="ex: Sala 02">
                     </div>
                 </div>
-                <button type="submit" class="btn-primary" style="margin-top: 20px;">💾 Salvar Dispositivo</button>
+                <button type="submit" class="btn-primary" style="margin-top: 20px;">💾 Salvar Alterações</button>
+                <a href="manage_devices.php" class="btn-small" style="margin-left: 12px;">Cancelar</a>
             </form>
         </div>
+        <?php endif; ?>
 
         <!-- Tabela de dispositivos -->
         <h2 style="margin: 32px 0 16px;">📋 Lista de Dispositivos</h2>
         <div style="overflow-x: auto;">
             <table class="data-table" id="devicesTable">
                 <thead>
-                    <tr><th>ID</th><th>Nome</th><th>Localização</th><th>Status</th><th>Última vez</th><th>Ações</th></tr>
+                    <tr><th>ID</th><th>Nome</th><th>MAC Address</th><th>Localização</th><th>Status</th><th>Última vez</th><th>Ações</th></tr>
                 </thead>
                 <tbody>
                     <?php if ($devices_result && $devices_result->num_rows > 0): ?>
                         <?php while ($device = $devices_result->fetch_assoc()): ?>
-                            <tr data-name="<?php echo strtolower($device['device_name']); ?>" data-location="<?php echo strtolower($device['location']); ?>" data-status="<?php echo $device['status']; ?>">
+                            <?php
+                                $realmenteOnline = isDeviceOnline($device);
+                                $statusClasse = $realmenteOnline ? 'online' : 'offline';
+                            ?>
+                            <tr data-name="<?php echo strtolower($device['device_name']); ?>" data-location="<?php echo strtolower($device['location']); ?>" data-status="<?php echo $statusClasse; ?>">
                                 <td><?php echo $device['id']; ?></td>
                                 <td><strong><?php echo htmlspecialchars($device['device_name']); ?></strong></td>
+                                <td class="mac-cell"><?php echo htmlspecialchars($device['mac_address'] ?: '—'); ?></td>
                                 <td><?php echo htmlspecialchars($device['location'] ?: '—'); ?></td>
-                                <td><span class="status-badge <?php echo $device['status']; ?>"><?php echo $device['status'] == 'online' ? '🔵 Online' : '🔴 Offline'; ?></span></td>
+                                <td><span class="status-badge <?php echo $statusClasse; ?>"><?php echo $realmenteOnline ? '🔵 Online' : '🔴 Offline'; ?></span></td>
                                 <td class="last-seen"><?php echo $device['last_seen'] ? date('d/m/Y H:i:s', strtotime($device['last_seen'])) : 'nunca'; ?></td>
                                 <td class="actions-cell">
                                     <a href="?edit=<?php echo $device['id']; ?>" class="btn-small btn-edit">✏️ Editar</a>
-                                    <button class="btn-small btn-toggle" data-id="<?php echo $device['id']; ?>">🔄 Simular Online/Offline</button>
                                     <a href="access_logs.php?device=<?php echo $device['id']; ?>" class="btn-small">📜 Logs associados</a>
                                     <button class="btn-small btn-delete" data-id="<?php echo $device['id']; ?>" data-name="<?php echo htmlspecialchars($device['device_name']); ?>">🗑️ Excluir</button>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <tr><td colspan="6" style="text-align: center;">Nenhum dispositivo cadastrado. Adicione um acima.</td></tr>
+                        <tr><td colspan="7" style="text-align: center;">Nenhum ESP32 conectado ainda. Ligue o dispositivo na rede Wi-Fi configurada no firmware e aguarde alguns segundos.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -220,7 +200,7 @@ $devices_result = $conn->query("SELECT * FROM devices ORDER BY id DESC");
 
         <!-- Mensagem de informação sobre integração real -->
         <div class="info-card" style="background: #eef2ff; border-radius: 20px; padding: 20px; margin-top: 30px;">
-            <p>⚠️ <strong>Ambiente de gestão</strong> – Os dispositivos ESP32 reais se comunicarão via <code>api/verify_card.php</code>.<br></p>
+            <p>⚠️ <strong>Registro automático</strong> – Não existe cadastro manual de dispositivo neste sistema. Basta configurar o Wi-Fi e o IP do servidor no firmware (<code>esp32_firmware/AccessPoint_ESP32.ino</code>) e ligar o ESP32: ele se identifica sozinho pelo endereço MAC na primeira vez que fala com o servidor (via <code>api/heartbeat.php</code>, a cada poucos segundos, e <code>api/verify_card.php</code>, a cada leitura de cartão) e aparece automaticamente na lista abaixo. Você pode renomear e definir a localização depois de conectado. O status <strong>Online/Offline</strong> é sempre real: só fica online enquanto o ESP32 físico está mandando sinal.</p>
         </div>
     </main>
 </div>
@@ -244,17 +224,6 @@ $devices_result = $conn->query("SELECT * FROM devices ORDER BY id DESC");
     }
     searchInput.addEventListener('keyup', filterTable);
     statusFilter.addEventListener('change', filterTable);
-
-    // Alternar status via fetch (simula online/offline e recarrega)
-    document.querySelectorAll('.btn-toggle').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            const id = btn.getAttribute('data-id');
-            const res = await fetch(`manage_devices.php?toggle_status=${id}`);
-            if (res.ok) location.reload();
-            else alert('Erro ao alternar status');
-        });
-    });
 
     // Modal de exclusão personalizado
     let deleteId = null;

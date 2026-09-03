@@ -2,6 +2,7 @@
 
 require_once 'includes/auth.php';
 requireLogin();
+require_once 'includes/device_helpers.php';
 
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
@@ -156,6 +157,14 @@ $cards_result = $conn->query("
 ");
 
 $devices_list = $conn->query("SELECT id, device_name FROM devices ORDER BY device_name");
+
+// Dispositivos online agora (usados no leitor de cadastro de tag abaixo)
+$online_devices = [];
+$all_devices_status = $conn->query("SELECT id, device_name, status, last_seen FROM devices ORDER BY device_name");
+while ($d = $all_devices_status->fetch_assoc()) {
+    if (isDeviceOnline($d)) $online_devices[] = $d;
+}
+
 $card_permissions = [];
 if ($isEditing && $editCard) {
     $permRes = $conn->query("SELECT device_id FROM card_access WHERE card_id = {$editCard['id']}");
@@ -329,6 +338,13 @@ if ($isEditing && $editCard) {
         .btn-edit { background: #e0e7ff; color: #3730a3; }
         .btn-toggle { background: #fef3c7; color: #92400e; }
         .btn-delete { background: #fee2e2; color: #991b1b; }
+        .enroll-box { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 16px; padding: 16px; margin-top: 8px; }
+        .enroll-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .enroll-row select { padding: 10px 14px; border-radius: 14px; border: 1px solid #cbd5e1; }
+        .enroll-status { font-size: 0.85rem; font-weight: 600; margin-top: 10px; }
+        .enroll-status.waiting { color: #92400e; }
+        .enroll-status.success { color: #065f46; }
+        .enroll-status.error { color: #991b1b; }
         .alert {
             padding: 16px 20px;
             border-radius: 20px;
@@ -424,7 +440,28 @@ if ($isEditing && $editCard) {
                 <input type="hidden" name="action" value="<?php echo $isEditing ? 'update' : 'create'; ?>">
                 <?php if ($isEditing): ?><input type="hidden" name="card_id" value="<?php echo $editCard['id']; ?>"><?php endif; ?>
                 <div class="form-grid">
-                    <div class="input-group"><label>🔑 UID do Cartão *</label><input type="text" name="card_uid" value="<?php echo $isEditing ? htmlspecialchars($editCard['card_uid']) : ''; ?>" required placeholder="ex: A1B2C3D4"></div>
+                    <div class="input-group">
+                        <label>🔑 UID do Cartão *</label>
+                        <input type="text" name="card_uid" id="card_uid" value="<?php echo $isEditing ? htmlspecialchars($editCard['card_uid']) : ''; ?>" required placeholder="ex: A1B2C3D4">
+                        <div class="enroll-box">
+                            <div class="enroll-row">
+                                <span>📡 Ler UID pelo leitor:</span>
+                                <select id="enrollDevice" <?php echo empty($online_devices) ? 'disabled' : ''; ?>>
+                                    <?php if (empty($online_devices)): ?>
+                                        <option value="">Nenhum ESP32 online</option>
+                                    <?php else: ?>
+                                        <option value="">-- Selecione o dispositivo --</option>
+                                        <?php foreach ($online_devices as $d): ?>
+                                            <option value="<?php echo $d['id']; ?>"><?php echo htmlspecialchars($d['device_name']); ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                                <button type="button" id="enrollStartBtn" class="btn-small btn-edit" <?php echo empty($online_devices) ? 'disabled' : ''; ?>>▶️ Iniciar leitura</button>
+                                <button type="button" id="enrollCancelBtn" class="btn-small btn-delete" style="display:none;">✖️ Cancelar</button>
+                            </div>
+                            <div id="enrollStatus" class="enroll-status"></div>
+                        </div>
+                    </div>
                     <div class="input-group"><label>👤 Nome do Portador *</label><input type="text" name="holder_name" value="<?php echo $isEditing ? htmlspecialchars($editCard['holder_name']) : ''; ?>" required></div>
                     <div class="input-group"><label>📌 Tipo</label><select name="holder_type"><?php $tipos = ['aluno'=>'Aluno','professor'=>'Professor','funcionario'=>'Funcionário','visitante'=>'Visitante']; foreach($tipos as $k=>$v){ $sel = ($isEditing && $editCard['holder_type']==$k)?'selected':''; echo "<option value='$k' $sel>$v</option>"; } ?></select></div>
                     <div class="input-group"><label>⚡ Status</label><select name="status"><option value="active" <?php echo ($isEditing && $editCard['status']=='active')?'selected':''; ?>>Ativo</option><option value="blocked" <?php echo ($isEditing && $editCard['status']=='blocked')?'selected':''; ?>>Bloqueado</option></select></div>
@@ -571,6 +608,108 @@ if ($isEditing && $editCard) {
         modal.querySelector('.modal-cancel').onclick = () => modal.remove();
     }
 
+    // Cadastro de tag pelo leitor RFID do ESP32 (modo de configuração)
+
+    const enrollDevice = document.getElementById('enrollDevice');
+    const enrollStartBtn = document.getElementById('enrollStartBtn');
+    const enrollCancelBtn = document.getElementById('enrollCancelBtn');
+    const enrollStatus = document.getElementById('enrollStatus');
+    const cardUidInput = document.getElementById('card_uid');
+
+    let enrollPollTimer = null;
+    let enrollTimeoutTimer = null;
+    let enrollDeviceId = null;
+
+    function setEnrollStatus(texto, tipo) {
+        enrollStatus.textContent = texto;
+        enrollStatus.className = 'enroll-status' + (tipo ? ' ' + tipo : '');
+    }
+
+    function stopEnrollPolling() {
+        if (enrollPollTimer) { clearInterval(enrollPollTimer); enrollPollTimer = null; }
+        if (enrollTimeoutTimer) { clearTimeout(enrollTimeoutTimer); enrollTimeoutTimer = null; }
+    }
+
+    function resetEnrollUI() {
+        stopEnrollPolling();
+        enrollDeviceId = null;
+        enrollStartBtn.style.display = '';
+        enrollStartBtn.disabled = false;
+        enrollCancelBtn.style.display = 'none';
+        enrollDevice.disabled = false;
+    }
+
+    if (enrollStartBtn) {
+        enrollStartBtn.addEventListener('click', async () => {
+            const deviceId = enrollDevice.value;
+            if (!deviceId) { setEnrollStatus('Selecione um dispositivo online primeiro.', 'error'); return; }
+
+            enrollDeviceId = deviceId;
+            enrollStartBtn.disabled = true;
+            enrollDevice.disabled = true;
+
+            try {
+                const res = await fetch('api/enroll_start.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: deviceId })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    setEnrollStatus('❌ ' + (data.message || 'Não foi possível iniciar a leitura.'), 'error');
+                    resetEnrollUI();
+                    return;
+                }
+            } catch (e) {
+                setEnrollStatus('❌ Erro ao comunicar com o servidor.', 'error');
+                resetEnrollUI();
+                return;
+            }
+
+            setEnrollStatus('🟡 Aproxime o cartão do leitor no ESP32...', 'waiting');
+            enrollStartBtn.style.display = 'none';
+            enrollCancelBtn.style.display = '';
+
+            enrollPollTimer = setInterval(pollEnroll, 1500);
+            enrollTimeoutTimer = setTimeout(async () => {
+                setEnrollStatus('⌛ Tempo esgotado. Tente novamente.', 'error');
+                await cancelEnroll();
+            }, 30000);
+        });
+    }
+
+    async function pollEnroll() {
+        if (!enrollDeviceId) return;
+        try {
+            const res = await fetch(`api/enroll_poll.php?device_id=${enrollDeviceId}`);
+            const data = await res.json();
+            if (data.success && data.uid) {
+                cardUidInput.value = data.uid;
+                setEnrollStatus('✅ UID capturado: ' + data.uid, 'success');
+                resetEnrollUI();
+            }
+        } catch (e) {
+            // silencioso - tenta de novo no próximo ciclo
+        }
+    }
+
+    async function cancelEnroll() {
+        if (enrollDeviceId) {
+            try {
+                await fetch('api/enroll_cancel.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: enrollDeviceId })
+                });
+            } catch (e) {}
+        }
+        resetEnrollUI();
+    }
+
+    if (enrollCancelBtn) {
+        enrollCancelBtn.addEventListener('click', async () => {
+            setEnrollStatus('Leitura cancelada.', '');
+            await cancelEnroll();
+        });
+    }
 </script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 
 require_once 'includes/auth.php';
 requireLogin();
+require_once 'includes/device_helpers.php';
 
 // CONFIGURAÇÃO DE DATA/HORA DO BRASIL
 date_default_timezone_set('America/Sao_Paulo');
@@ -273,15 +274,16 @@ $fullname = $_SESSION['user_fullname'];
                 <div class="devices-grid">
                     <?php if ($devices_result && $devices_result->num_rows > 0): ?>
                         <?php while ($device = $devices_result->fetch_assoc()): ?>
+                            <?php $realmenteOnline = isDeviceOnline($device); ?>
                             <div class="device-card">
                                 <div class="device-name">
                                     <?php echo htmlspecialchars($device['device_name']); ?>
-                                    <span class="device-status <?php echo $device['status'] == 'online' ? 'status-online' : 'status-offline'; ?>">
-                                        <?php echo $device['status'] == 'online' ? '● ONLINE' : '● OFFLINE'; ?>
+                                    <span class="device-status <?php echo $realmenteOnline ? 'status-online' : 'status-offline'; ?>">
+                                        <?php echo $realmenteOnline ? '● ONLINE' : '● OFFLINE'; ?>
                                     </span>
                                 </div>
                                 <div class="device-location">📍 <?php echo htmlspecialchars($device['location'] ?: 'Local não definido'); ?></div>
-                                <small>Última atualização: <?php echo $device['last_seen'] ? date('d/m H:i', strtotime($device['last_seen'])) : 'agora mesmo'; ?></small>
+                                <small>Última atualização: <?php echo $device['last_seen'] ? date('d/m H:i', strtotime($device['last_seen'])) : 'nunca'; ?></small>
                             </div>
                         <?php endwhile; ?>
                     <?php else: ?>

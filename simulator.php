@@ -2,6 +2,7 @@
 
 require_once 'includes/auth.php';
 requireLogin();
+require_once 'includes/device_helpers.php';
 
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
@@ -48,7 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simulate'])) {
     }
 }
 
-$devices = $conn->query("SELECT id, device_name, location FROM devices ORDER BY device_name");
+$all_devices = $conn->query("SELECT id, device_name, location, status, last_seen FROM devices ORDER BY device_name");
+$devices = [];
+while ($d = $all_devices->fetch_assoc()) {
+    if (isDeviceOnline($d)) $devices[] = $d;
+}
 $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, message, created_at FROM access_logs ORDER BY created_at DESC LIMIT 10");
 ?>
 <!DOCTYPE html>
@@ -218,39 +223,39 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
     <main class="main-content">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
             <h1 style="margin: 0;">🔧 Simulador ESP32</h1>
-            <span class="device-badge">Modo de Teste</span>
+            <span class="device-badge"><?php echo count($devices); ?> dispositivo(s) online</span>
         </div>
 
         <!-- Formulário principal -->
 
         <div class="simulator-card">
             <h2 style="margin-bottom: 20px;">📡 Testar Acesso com Cartão RFID</h2>
+            <?php if (empty($devices)): ?>
+                <p>⚠️ Nenhum ESP32 online no momento. Ligue o dispositivo (Wi-Fi + firmware configurado) e aguarde alguns segundos para ele aparecer aqui.</p>
+            <?php else: ?>
             <form method="POST" id="simulatorForm">
                 <div class="form-grid">
                     <div class="input-group">
                         <label>🆔 UID do Cartão *</label>
-                        <input type="text" name="card_uid" id="card_uid" required 
-                               value="<?php echo htmlspecialchars($card_uid); ?>" 
+                        <input type="text" name="card_uid" id="card_uid" required
+                               value="<?php echo htmlspecialchars($card_uid); ?>"
                                placeholder="Digite o UID do cartão aqui">
                     </div>
                     <div class="input-group">
-                        <label>📡 Dispositivo (Porta/ESP32) *</label>
+                        <label>📡 Dispositivo Online (Porta/ESP32) *</label>
                         <select name="device_id" id="device_id" required>
                             <option value="">-- Selecione --</option>
-                            <?php if ($devices && $devices->num_rows > 0): ?>
-                                <?php while($dev = $devices->fetch_assoc()): ?>
-                                    <option value="<?php echo $dev['id']; ?>" <?php echo ($device_id == $dev['id']) ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($dev['device_name'] . ' - ' . ($dev['location'] ?: 'local não definido')); ?>
-                                    </option>
-                                <?php endwhile; ?>
-                            <?php else: ?>
-                                <option value="" disabled>Nenhum dispositivo cadastrado. Crie um em Dispositivos</option>
-                            <?php endif; ?>
+                            <?php foreach ($devices as $dev): ?>
+                                <option value="<?php echo $dev['id']; ?>" <?php echo ($device_id == $dev['id']) ? 'selected' : ''; ?>>
+                                    🔵 <?php echo htmlspecialchars($dev['device_name'] . ' - ' . ($dev['location'] ?: 'local não definido')); ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
-                <button type="submit" name="simulate" class="btn-primary">🔄 Simular Leitura (Enviar para API)</button>
+                <button type="submit" name="simulate" class="btn-primary">🔄 Testar Leitura (Enviar para API)</button>
             </form>
+            <?php endif; ?>
 
             <?php if ($simulation_result !== null): ?>
                 <div class="result-box <?php echo $simulation_result['success'] ? 'result-success' : 'result-error'; ?>">
@@ -307,10 +312,11 @@ $recent_tests = $conn->query("SELECT card_uid, device_name, access_granted, mess
         <div style="background: #eef2ff; border-radius: 20px; padding: 24px; margin-top: 20px;">
             <h3 style="margin-bottom: 16px;">📡 Como o ESP32 se comunica com o sistema?</h3>
             <ul style="line-height: 1.7; margin-left: 20px;">
-                <li>O ESP32 lê o UID do cartão RFID e envia POST para <code>api/verify_card.php</code> com JSON <code>{"card_uid":"UID", "device_id":1}</code>.</li>
+                <li>O ESP32 se identifica sozinho pelo endereço MAC (sem cadastro manual) e avisa que está online a cada poucos segundos.</li>
+                <li>Ao ler uma tag no leitor RFID, envia POST para <code>api/verify_card.php</code> com JSON <code>{"card_uid":"UID", "mac_address":"AA:BB:CC:.."}</code>.</li>
                 <li>A API verifica se o cartão está ativo e tem permissão para aquele dispositivo.</li>
-                <li>Se autorizado, responde <code>{"success":true, "open_door":true, "message":"..."}</code>.</li>
-                <li>O ESP32 aciona a trava eletrônica.</li>
+                <li>Se autorizado, responde <code>{"success":true, "open_door":true, "message":"..."}</code> e o ESP32 destrava a porta (servo a 90°).</li>
+                <li>Este simulador testa exatamente essa mesma API, contra um dispositivo realmente online, sem precisar aproximar um cartão fisicamente do leitor.</li>
                 <li>Toda tentativa fica registrada nos logs acima.</li>
             </ul>
         </div>
