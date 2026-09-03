@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simulate'])) {
     } elseif ($device_id <= 0) {
         $simulation_result = ['success' => false, 'message' => '❌ Selecione um dispositivo válido.'];
     } else {
-        $api_url = 'http://' . $_SERVER['HTTP_HOST'] . '/access_control/api/verify_card.php';
+        $api_url = 'http://' . $_SERVER['HTTP_HOST'] . '/access_point/api/verify_card.php';
         $postData = json_encode(['card_uid' => $card_uid, 'device_id' => $device_id]);
         
         $ch = curl_init($api_url);
