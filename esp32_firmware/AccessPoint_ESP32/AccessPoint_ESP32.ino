@@ -81,7 +81,10 @@
     pelo painel) e piscando enquanto tenta conectar/reconectar ao Wi-Fi.
   - Buzzer: padrões diferentes de bipe para sucesso, acesso negado,
     erro/problema e tag cadastrada - ver função beepPattern() abaixo.
-  - LCD: sempre mostra uma mensagem do estado atual do sistema.
+  - LCD: sempre mostra uma mensagem do estado atual do sistema, com pequenas
+    animações - um spinner gira sozinho na tela de espera (parado = ESP32
+    travado), a liberação de acesso mostra uma barra regressiva até a
+    trava fechar de novo, e negado/erro piscam o título junto com o LED.
 
   ---------------------------------------------------------------------
   FORMATO DO UID DO CARTÃO
@@ -149,6 +152,7 @@ Servo trava;
 String urlVerify;
 String urlHeartbeat;
 String urlEnrollCard;
+String urlWriteAck;
 
 String deviceMac = "";
 int    deviceId = 0;
@@ -156,9 +160,83 @@ String deviceName = "AccessPoint";
 
 bool enrollModeAtivo = false;
 
+// Modo de gravação de UID em cartão mágico (Gen1A/Gen2/CUID) - o operador
+// define o UID no painel e aproxima um cartão regravável do leitor.
+bool writeModeAtivo = false;
+String writeTargetUid = "";
+
 unsigned long ultimoHeartbeat = 0;
 unsigned long ultimaLeituraMs = 0;
 String ultimoUidLido = "";
+
+// ---------------- Animações do LCD ----------------
+// Enquanto a tela está "parada" (aguardando cartão ou aguardando tag no
+// modo de cadastro), um pequeno spinner gira sozinho na última coluna da
+// linha 2 - só pra mostrar que o ESP32 está vivo e escutando, sem
+// atrapalhar a leitura do RFID (atualiza no máximo a cada 400ms).
+bool telaEstavel = false;
+unsigned long ultimoTickAnimacao = 0;
+int frameSpinner = 0;
+const char FRAMES_SPINNER[4] = { '|', '/', '-', '\\' };
+
+// ---------------------------------------------------------------------
+// O LCD 16x2 (chip HD44780) usa a tabela de caracteres de fábrica dele,
+// que não entende UTF-8. Qualquer acento ou "ç" que vem do site (ex:
+// "Cartão não cadastrado", "permissão", nome de dispositivo com acento)
+// chega em UTF-8 e vira caractere bugado na tela se for impresso direto.
+// limparAcentos() troca cada acento pela letra sem acento equivalente e
+// descarta qualquer outro caractere fora do ASCII básico (ex: emoji), pra
+// sempre imprimir algo legível.
+// ---------------------------------------------------------------------
+char mapaAcentoUtf8(uint8_t b0, uint8_t b1) {
+  if (b0 != 0xC3) return 0; // só cobre o bloco "Latin-1 Supplement" (acentos usados em PT-BR)
+  switch (b1) {
+    case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: return 'A'; // À Á Â Ã Ä Å
+    case 0x87: return 'C';                                                        // Ç
+    case 0x88: case 0x89: case 0x8A: case 0x8B: return 'E';                        // È É Ê Ë
+    case 0x8C: case 0x8D: case 0x8E: case 0x8F: return 'I';                        // Ì Í Î Ï
+    case 0x91: return 'N';                                                        // Ñ
+    case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: return 'O';             // Ò Ó Ô Õ Ö
+    case 0x99: case 0x9A: case 0x9B: case 0x9C: return 'U';                        // Ù Ú Û Ü
+    case 0xA0: case 0xA1: case 0xA2: case 0xA3: case 0xA4: case 0xA5: return 'a';  // à á â ã ä å
+    case 0xA7: return 'c';                                                        // ç
+    case 0xA8: case 0xA9: case 0xAA: case 0xAB: return 'e';                        // è é ê ë
+    case 0xAC: case 0xAD: case 0xAE: case 0xAF: return 'i';                        // ì í î ï
+    case 0xB1: return 'n';                                                        // ñ
+    case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: return 'o';             // ò ó ô õ ö
+    case 0xB9: case 0xBA: case 0xBB: case 0xBC: return 'u';                        // ù ú û ü
+    case 0xBD: return 'y';                                                        // ý
+    default: return 0;
+  }
+}
+
+String limparAcentos(String texto) {
+  String saida = "";
+  int i = 0;
+  int len = texto.length();
+  while (i < len) {
+    uint8_t b0 = (uint8_t)texto.charAt(i);
+
+    if (b0 < 0x80) { // ASCII normal - passa direto
+      saida += (char)b0;
+      i += 1;
+      continue;
+    }
+
+    if ((b0 & 0xE0) == 0xC0 && i + 1 < len) { // sequência UTF-8 de 2 bytes
+      char substituto = mapaAcentoUtf8(b0, (uint8_t)texto.charAt(i + 1));
+      if (substituto != 0) saida += substituto;
+      i += 2;
+      continue;
+    }
+
+    if ((b0 & 0xF0) == 0xE0 && i + 2 < len) { i += 3; continue; } // 3 bytes (ex: símbolos) - descarta
+    if ((b0 & 0xF8) == 0xF0 && i + 3 < len) { i += 4; continue; } // 4 bytes (ex: emoji) - descarta
+
+    i += 1; // byte solto fora do padrão - ignora
+  }
+  return saida;
+}
 
 // ---------------------------------------------------------------------
 void setup() {
@@ -210,6 +288,7 @@ void setup() {
   urlVerify      = "http://" + String(SERVER_HOST) + ":" + String(SERVER_PORT) + "/access_point/api/verify_card.php";
   urlHeartbeat   = "http://" + String(SERVER_HOST) + ":" + String(SERVER_PORT) + "/access_point/api/heartbeat.php";
   urlEnrollCard  = "http://" + String(SERVER_HOST) + ":" + String(SERVER_PORT) + "/access_point/api/enroll_card.php";
+  urlWriteAck    = "http://" + String(SERVER_HOST) + ":" + String(SERVER_PORT) + "/access_point/api/write_ack.php";
   Serial.println("[BOOT] URL do heartbeat: " + urlHeartbeat);
 
   conectarWiFi();
@@ -231,15 +310,29 @@ void loop() {
     enviarHeartbeat();
   }
 
-  // Entrar/sair do modo de cadastro conforme o painel solicitou
+  // Entrar/sair do modo de gravação de UID conforme o painel solicitou
+  // (tem prioridade sobre o modo de cadastro - o servidor já garante que
+  // os dois nunca ficam ativos ao mesmo tempo, isso aqui é só defensivo)
+  static bool telaGravacaoAtiva = false;
+  if (writeModeAtivo && !telaGravacaoAtiva) {
+    telaGravacaoAtiva = true;
+    entrarModoGravacao();
+  } else if (!writeModeAtivo && telaGravacaoAtiva) {
+    telaGravacaoAtiva = false;
+    sairModoGravacao();
+  }
+
+  // Entrar/sair do modo de cadastro de tag conforme o painel solicitou
   static bool telaCadastroAtiva = false;
-  if (enrollModeAtivo && !telaCadastroAtiva) {
+  if (enrollModeAtivo && !writeModeAtivo && !telaCadastroAtiva) {
     telaCadastroAtiva = true;
     entrarModoCadastro();
-  } else if (!enrollModeAtivo && telaCadastroAtiva) {
+  } else if ((!enrollModeAtivo || writeModeAtivo) && telaCadastroAtiva) {
     telaCadastroAtiva = false;
     sairModoCadastro();
   }
+
+  animarTelaEstavel();
 
   if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
     return;
@@ -257,7 +350,12 @@ void loop() {
   ultimoUidLido = uid;
   ultimaLeituraMs = millis();
 
-  if (enrollModeAtivo) {
+  if (writeModeAtivo) {
+    Serial.println("Cartao detectado em modo gravacao (UID atual: " + uid + ")");
+    processarGravacao();
+    writeModeAtivo = false; // sai do modo localmente, não espera o próximo heartbeat confirmar
+    telaGravacaoAtiva = false;
+  } else if (enrollModeAtivo) {
     Serial.println("Tag lida em modo cadastro: " + uid);
     processarCadastro(uid);
     enrollModeAtivo = false; // sai do modo localmente, não espera o próximo heartbeat confirmar
@@ -286,6 +384,7 @@ String lerUID() {
 // Operação normal: verificar cartão e liberar/negar acesso
 // ---------------------------------------------------------------------
 void processarCartao(String uid) {
+  telaEstavel = false;
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Verificando...");
@@ -340,7 +439,12 @@ void processarCartao(String uid) {
 }
 
 // ---------------------------------------------------------------------
+// Acesso liberado: mostra a mensagem por um instante e depois troca a
+// linha 2 por uma barra que vai "esvaziando" até a trava fechar de novo -
+// dá pra ver visualmente quanto tempo falta pra porta travar sozinha.
+// ---------------------------------------------------------------------
 void exibirLiberado(String mensagem) {
+  telaEstavel = false;
   digitalWrite(LED_VERMELHO, LOW);
   digitalWrite(LED_VERDE, HIGH);
   beepPattern(1, 150, 0); // sucesso: 1 bipe
@@ -348,61 +452,117 @@ void exibirLiberado(String mensagem) {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Acesso Liberado");
+  lcd.setCursor(0, 1);
+  lcd.print(limparAcentos(mensagem).substring(0, 16));
 
   trava.write(SERVO_DESTRAVADO);
-  delay(TEMPO_DESTRAVADO_MS);
-  trava.write(SERVO_TRAVADO);
 
+  unsigned long tempoMensagem = min((unsigned long)1500, (unsigned long)TEMPO_DESTRAVADO_MS);
+  delay(tempoMensagem);
+
+  unsigned long tempoRestante = TEMPO_DESTRAVADO_MS - tempoMensagem;
+  const int passos = 8;
+  unsigned long passoMs = tempoRestante / passos;
+  lcd.setCursor(0, 0);
+  lcd.print("Fecha em breve..");
+  for (int i = passos; i >= 0 && passoMs > 0; i--) {
+    lcd.setCursor(0, 1);
+    lcd.print(barraProgresso(i, passos));
+    delay(passoMs);
+  }
+
+  trava.write(SERVO_TRAVADO);
   digitalWrite(LED_VERDE, LOW);
   digitalWrite(LED_VERMELHO, HIGH); // volta ao repouso: trava fechada
   telaAguardando();
 }
 
+// Desenha uma barra de "passosRestantes/passosTotal" preenchida com blocos
+// sólidos (0xFF, caractere já existente na ROM do LCD), completando os 16
+// caracteres da linha com espaços.
+String barraProgresso(int passosRestantes, int passosTotal) {
+  int blocos = (16 * passosRestantes) / passosTotal;
+  String barra = "";
+  for (int i = 0; i < 16; i++) {
+    barra += (i < blocos) ? (char)255 : ' ';
+  }
+  return barra;
+}
+
+// ---------------------------------------------------------------------
+// Acesso negado / erro: o título da linha 1 pisca em sincronia com o LED
+// vermelho, enquanto o motivo fica fixo na linha 2.
 // ---------------------------------------------------------------------
 void exibirNegado(String mensagem) {
-  beepPattern(2, 120, 100); // negado: 2 bipes
-  piscarVermelho(3, 100);
-
+  telaEstavel = false;
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Acesso Negado");
   lcd.setCursor(0, 1);
-  lcd.print(mensagem.substring(0, 16));
+  lcd.print(limparAcentos(mensagem).substring(0, 16));
 
-  delay(1800);
+  beepPattern(2, 120, 100); // negado: 2 bipes
+  piscarTitulo("Acesso Negado", 3, 150);
+
+  delay(900);
   digitalWrite(LED_VERMELHO, HIGH); // repouso: trava continua fechada
   telaAguardando();
 }
 
 // ---------------------------------------------------------------------
 void exibirErro(String mensagem) {
-  beepPattern(3, 80, 80); // erro/problema: 3 bipes rápidos
-  piscarVermelho(5, 80);
-
+  telaEstavel = false;
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Erro:");
   lcd.setCursor(0, 1);
-  lcd.print(mensagem.substring(0, 16));
+  lcd.print(limparAcentos(mensagem).substring(0, 16));
 
-  delay(1800);
+  beepPattern(3, 80, 80); // erro/problema: 3 bipes rápidos
+  piscarTitulo("Erro!", 5, 90);
+
+  delay(900);
   digitalWrite(LED_VERMELHO, HIGH);
   telaAguardando();
+}
+
+// Pisca um título na linha 1 junto com o LED vermelho (apagado = espaço em
+// branco, aceso = texto), "vezes" repetições de "duracaoMs" cada metade.
+void piscarTitulo(String titulo, int vezes, int duracaoMs) {
+  for (int i = 0; i < vezes; i++) {
+    digitalWrite(LED_VERMELHO, LOW);
+    lcd.setCursor(0, 0);
+    lcd.print("                ");
+    delay(duracaoMs);
+    digitalWrite(LED_VERMELHO, HIGH);
+    lcd.setCursor(0, 0);
+    lcd.print(limparAcentos(titulo).substring(0, 16));
+    delay(duracaoMs);
+  }
 }
 
 // ---------------------------------------------------------------------
 void telaAguardando() {
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print(deviceName.substring(0, 16));
+  lcd.print(limparAcentos(deviceName).substring(0, 16));
   lcd.setCursor(0, 1);
   lcd.print("Aproxime cartao");
+  telaEstavel = true;
+}
+
+// Gira o spinner na última coluna da linha 2 enquanto a tela está parada
+// (aguardando cartão ou aguardando tag em modo de cadastro).
+void animarTelaEstavel() {
+  if (!telaEstavel) return;
+  if (millis() - ultimoTickAnimacao < 400) return;
+  ultimoTickAnimacao = millis();
+  frameSpinner = (frameSpinner + 1) % 4;
+  lcd.setCursor(15, 1);
+  lcd.print(FRAMES_SPINNER[frameSpinner]);
 }
 
 // ---------------------------------------------------------------------
 // Modo de configuração: cadastro de tag pelo leitor (ativado pelo painel)
 // ---------------------------------------------------------------------
 void entrarModoCadastro() {
+  telaEstavel = false;
   digitalWrite(LED_AMARELO, HIGH);
   beepPattern(1, 50, 0); // chirp curto ao entrar em modo cadastro
 
@@ -411,6 +571,7 @@ void entrarModoCadastro() {
   lcd.print("Modo Cadastro");
   lcd.setCursor(0, 1);
   lcd.print("Aproxime a tag");
+  telaEstavel = true;
 }
 
 // ---------------------------------------------------------------------
@@ -420,7 +581,233 @@ void sairModoCadastro() {
 }
 
 // ---------------------------------------------------------------------
+// Modo de gravação: regrava o UID de um cartão MÁGICO (Gen1A/Gen2/CUID)
+// com o valor definido no painel. Cartões comuns têm UID travado de
+// fábrica e vão falhar nos dois métodos abaixo - isso é esperado.
+// ---------------------------------------------------------------------
+void entrarModoGravacao() {
+  telaEstavel = false;
+  digitalWrite(LED_AMARELO, HIGH);
+  beepPattern(1, 50, 0); // chirp curto ao entrar em modo de gravação
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Modo Gravacao");
+  lcd.setCursor(0, 1);
+  lcd.print("Aproxime cartao");
+  telaEstavel = true;
+}
+
+// ---------------------------------------------------------------------
+void sairModoGravacao() {
+  digitalWrite(LED_AMARELO, LOW);
+  telaAguardando();
+}
+
+// ---------------------------------------------------------------------
+void processarGravacao() {
+  telaEstavel = false;
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Gravando UID...");
+  lcd.setCursor(0, 1);
+  lcd.print(writeTargetUid);
+
+  byte novoUid[4];
+  if (!hexParaBytes4(writeTargetUid, novoUid)) {
+    Serial.println("[GRAVACAO] UID invalido recebido do servidor: " + writeTargetUid);
+    enviarResultadoGravacao(false, "UID invalido");
+    exibirErro("UID invalido");
+    return;
+  }
+
+  String erro = "";
+  String metodo = "";
+  bool ok = regravarUidGen1A(novoUid, erro);
+
+  if (ok) {
+    metodo = "Gen1A";
+  } else {
+    Serial.println("[GRAVACAO] Gen1A falhou (" + erro + "), tentando Gen2/CUID...");
+    // Precisa re-selecionar o cartão do zero antes de tentar o outro método
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
+    delay(150);
+    if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+      erro = "Cartao removido do leitor";
+    } else {
+      String erroGen2 = "";
+      ok = regravarUidGen2(novoUid, erroGen2);
+      metodo = "Gen2/CUID";
+      if (!ok) erro = erroGen2;
+    }
+  }
+
+  rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+
+  if (!ok) {
+    Serial.println("[GRAVACAO] Falhou nos dois metodos: " + erro);
+    enviarResultadoGravacao(false, "Cartao nao suporta gravacao (" + erro + ")");
+    exibirErro("Nao suportado");
+    return;
+  }
+
+  Serial.println("[GRAVACAO] Sucesso via " + metodo);
+  enviarResultadoGravacao(true, "Gravado com sucesso (" + metodo + ")");
+
+  beepPattern(2, 60, 60); // gravação concluída: bipe duplo curto
+  digitalWrite(LED_VERDE, HIGH);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("UID Gravado!");
+  lcd.setCursor(0, 1);
+  lcd.print(writeTargetUid + " " + metodo);
+  delay(2200);
+  digitalWrite(LED_VERDE, LOW);
+  telaAguardando();
+}
+
+// Tenta o "backdoor" de cartões mágicos Gen1A: dois comandos crus (0x40 de
+// 7 bits, depois 0x43 de 8 bits) liberam a escrita do bloco 0 sem precisar
+// de autenticação normal. Técnica bem documentada para esse tipo de cartão.
+bool regravarUidGen1A(byte* novoUid, String &erro) {
+  byte resposta[1];
+  byte respLen;
+  byte validBits;
+  MFRC522::StatusCode status;
+
+  byte cmd40 = 0x40;
+  validBits = 7;
+  respLen = sizeof(resposta);
+  status = rfid.PCD_TransceiveData(&cmd40, 1, resposta, &respLen, &validBits, 0, false);
+  if (status != MFRC522::STATUS_OK || respLen != 1 || resposta[0] != 0x0A) {
+    erro = "sem resposta ao comando 0x40";
+    Serial.println("[GRAVACAO][Gen1A] " + erro + " (status=" + String(MFRC522::GetStatusCodeName(status)) + ")");
+    return false;
+  }
+
+  byte cmd43 = 0x43;
+  validBits = 8;
+  respLen = sizeof(resposta);
+  status = rfid.PCD_TransceiveData(&cmd43, 1, resposta, &respLen, &validBits, 0, false);
+  if (status != MFRC522::STATUS_OK || respLen != 1 || resposta[0] != 0x0A) {
+    erro = "sem resposta ao comando 0x43";
+    Serial.println("[GRAVACAO][Gen1A] " + erro + " (status=" + String(MFRC522::GetStatusCodeName(status)) + ")");
+    return false;
+  }
+
+  byte buffer[18];
+  byte tamanho = sizeof(buffer);
+  status = rfid.MIFARE_Read(0, buffer, &tamanho);
+  if (status != MFRC522::STATUS_OK) {
+    erro = "falha ao ler bloco 0";
+    Serial.println("[GRAVACAO][Gen1A] " + erro + " (status=" + String(MFRC522::GetStatusCodeName(status)) + ")");
+    return false;
+  }
+
+  byte novoBloco0[16];
+  memcpy(novoBloco0, buffer, 16);
+  novoBloco0[0] = novoUid[0];
+  novoBloco0[1] = novoUid[1];
+  novoBloco0[2] = novoUid[2];
+  novoBloco0[3] = novoUid[3];
+  novoBloco0[4] = novoUid[0] ^ novoUid[1] ^ novoUid[2] ^ novoUid[3]; // BCC
+
+  status = rfid.MIFARE_Write(0, novoBloco0, 16);
+  if (status != MFRC522::STATUS_OK) {
+    erro = "falha ao gravar bloco 0";
+    Serial.println("[GRAVACAO][Gen1A] " + erro + " (status=" + String(MFRC522::GetStatusCodeName(status)) + ")");
+    return false;
+  }
+
+  return true;
+}
+
+// Tenta o método Gen2/CUID: autenticação normal com a chave padrão de
+// fábrica (FFFFFFFFFFFF) e escrita comum no bloco 0 - funciona em cartões
+// mágicos "regraváveis por autenticação", sem precisar de backdoor.
+bool regravarUidGen2(byte* novoUid, String &erro) {
+  MFRC522::MIFARE_Key key;
+  for (byte i = 0; i < 6; i++) key.keyByte[i] = 0xFF;
+
+  MFRC522::StatusCode status = rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 0, &key, &(rfid.uid));
+  if (status != MFRC522::STATUS_OK) {
+    erro = "autenticacao falhou";
+    Serial.println("[GRAVACAO][Gen2] " + erro + " (status=" + String(MFRC522::GetStatusCodeName(status)) + ")");
+    rfid.PCD_StopCrypto1();
+    return false;
+  }
+
+  byte buffer[18];
+  byte tamanho = sizeof(buffer);
+  status = rfid.MIFARE_Read(0, buffer, &tamanho);
+  if (status != MFRC522::STATUS_OK) {
+    erro = "falha ao ler bloco 0";
+    Serial.println("[GRAVACAO][Gen2] " + erro + " (status=" + String(MFRC522::GetStatusCodeName(status)) + ")");
+    rfid.PCD_StopCrypto1();
+    return false;
+  }
+
+  byte novoBloco0[16];
+  memcpy(novoBloco0, buffer, 16);
+  novoBloco0[0] = novoUid[0];
+  novoBloco0[1] = novoUid[1];
+  novoBloco0[2] = novoUid[2];
+  novoBloco0[3] = novoUid[3];
+  novoBloco0[4] = novoUid[0] ^ novoUid[1] ^ novoUid[2] ^ novoUid[3]; // BCC
+
+  status = rfid.MIFARE_Write(0, novoBloco0, 16);
+  rfid.PCD_StopCrypto1();
+
+  if (status != MFRC522::STATUS_OK) {
+    erro = "cartao rejeitou a gravacao (provavelmente nao e regravavel)";
+    Serial.println("[GRAVACAO][Gen2] " + erro + " (status=" + String(MFRC522::GetStatusCodeName(status)) + ")");
+    return false;
+  }
+
+  return true;
+}
+
+// Converte "A1B2C3D4" (8 caracteres hex) em 4 bytes. Retorna false se o
+// texto não tiver exatamente esse formato.
+bool hexParaBytes4(String hex, byte* out) {
+  if (hex.length() != 8) return false;
+  for (int i = 0; i < 4; i++) {
+    String par = hex.substring(i * 2, i * 2 + 2);
+    char* fimValido;
+    long valor = strtol(par.c_str(), &fimValido, 16);
+    if (*fimValido != '\0') return false;
+    out[i] = (byte)valor;
+  }
+  return true;
+}
+
+// Avisa o servidor o resultado da tentativa de gravação (sucesso ou não),
+// pra o painel mostrar pro operador.
+void enviarResultadoGravacao(bool sucesso, String mensagem) {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  http.begin(urlWriteAck);
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(4000);
+
+  StaticJsonDocument<256> doc;
+  doc["mac_address"] = deviceMac;
+  doc["success"] = sucesso;
+  doc["message"] = mensagem;
+  String corpo;
+  serializeJson(doc, corpo);
+
+  int httpCode = http.POST(corpo);
+  Serial.println("[GRAVACAO] write_ack -> HTTP " + String(httpCode));
+  http.end();
+}
+
+// ---------------------------------------------------------------------
 void processarCadastro(String uid) {
+  telaEstavel = false;
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Enviando tag...");
@@ -460,7 +847,7 @@ void processarCadastro(String uid) {
 
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Tag Lida!");
+  lcd.print("Tag Cadastrada!");
   lcd.setCursor(0, 1);
   lcd.print(uid);
   delay(2000);
@@ -482,18 +869,9 @@ void beepPattern(int vezes, int duracaoMs, int pausaMs) {
 }
 
 // ---------------------------------------------------------------------
-void piscarVermelho(int vezes, int duracaoMs) {
-  for (int i = 0; i < vezes; i++) {
-    digitalWrite(LED_VERMELHO, LOW);
-    delay(duracaoMs);
-    digitalWrite(LED_VERMELHO, HIGH);
-    delay(duracaoMs);
-  }
-}
-
-// ---------------------------------------------------------------------
 void conectarWiFi() {
   if (WiFi.status() == WL_CONNECTED) return;
+  telaEstavel = false;
 
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -521,6 +899,9 @@ void conectarWiFi() {
     lcd.setCursor(0, 1);
     lcd.print(WiFi.localIP().toString());
     delay(1500);
+    // Reconectou no meio da operação (não a primeira vez) - volta pra tela
+    // normal, a não ser que o painel tenha pedido modo de cadastro/gravação.
+    if (!enrollModeAtivo && !writeModeAtivo) telaAguardando();
   } else {
     Serial.println("Falha ao conectar no WiFi");
     lcd.clear();
@@ -564,6 +945,9 @@ void enviarHeartbeat() {
       const char* nm = resDoc["device_name"] | "";
       if (strlen(nm) > 0) deviceName = String(nm);
       enrollModeAtivo = resDoc["enroll_mode"] | false;
+      writeModeAtivo  = resDoc["write_mode"]  | false;
+      const char* wtu = resDoc["write_target_uid"] | "";
+      writeTargetUid  = String(wtu);
     }
   } else if (httpCode > 0) {
     // Chegou ao servidor, mas ele respondeu um erro HTTP (ex: 404 = URL

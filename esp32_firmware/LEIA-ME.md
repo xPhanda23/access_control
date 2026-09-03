@@ -70,6 +70,25 @@ Nada na estrutura de páginas, banco de dados ou navegação foi reorganizado.
    e o servo devem reagir, e o acesso aparece em *Logs de Acesso* e no
    *Dashboard* normalmente.
 
+## Gravar UID num cartão mágico (opcional)
+
+Além de ler o UID de fábrica de qualquer cartão, dá para **regravar** o UID
+de cartões do tipo "mágico" (Gen1A, Gen2/CUID) — esses são vendidos
+especificamente para isso; cartões comuns têm UID travado de fábrica e não
+aceitam essa operação, por mais que o firmware tente.
+
+Em *Cartões de Acesso*, no bloco "🔏 Gravar este UID num cartão mágico":
+digite (ou capture pelo leitor) o UID desejado no campo principal — precisa
+ter exatamente 8 caracteres hexadecimais (4 bytes) —, escolha o ESP32 e
+clique em **Gravar no cartão**. O LED amarelo acende, o LCD mostra "Modo
+Gravacao", e ao aproximar o cartão mágico o ESP32 tenta os dois métodos
+conhecidos (backdoor Gen1A, depois autenticação Gen2/CUID com a chave
+padrão) até um funcionar. O resultado aparece no painel em poucos segundos.
+
+⚠️ Isso só reescreve o *chip do cartão físico* — não confundir com o
+cadastro do UID no banco de dados (que é feito ao clicar em "Salvar
+Cartão" normalmente, igual sempre foi).
+
 ## Esquema de ligação (para conferência)
 
 | Componente          | Pino ESP32 |
@@ -116,7 +135,11 @@ firmware — isso é inofensivo e não afeta a lógica.
   negado, 3 rápidos para erro/problema, bipe duplo curto para tag
   cadastrada.
 - **LCD**: sempre mostra uma mensagem do estado atual (conectando,
-  aguardando cartão, verificando, liberado/negado, erro, modo cadastro).
+  aguardando cartão, verificando, liberado/negado, erro, modo cadastro), com
+  pequenas animações: um spinner (`| / - \`) gira sozinho no canto da tela
+  de espera pra mostrar que o ESP32 está vivo; ao liberar acesso, a linha 2
+  vira uma barra que "esvazia" mostrando quanto falta pra trava fechar de
+  novo; em negado/erro, o título pisca em sincronia com o LED vermelho.
 
 ## Segurança (nota importante)
 

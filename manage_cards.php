@@ -461,6 +461,24 @@ if ($isEditing && $editCard) {
                             </div>
                             <div id="enrollStatus" class="enroll-status"></div>
                         </div>
+                        <div class="enroll-box">
+                            <div class="enroll-row">
+                                <span>🔏 Gravar este UID num cartão mágico:</span>
+                                <select id="writeDevice" <?php echo empty($online_devices) ? 'disabled' : ''; ?>>
+                                    <?php if (empty($online_devices)): ?>
+                                        <option value="">Nenhum ESP32 online</option>
+                                    <?php else: ?>
+                                        <option value="">-- Selecione o dispositivo --</option>
+                                        <?php foreach ($online_devices as $d): ?>
+                                            <option value="<?php echo $d['id']; ?>"><?php echo htmlspecialchars($d['device_name']); ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                                <button type="button" id="writeStartBtn" class="btn-small btn-edit" <?php echo empty($online_devices) ? 'disabled' : ''; ?>>🔏 Gravar no cartão</button>
+                                <button type="button" id="writeCancelBtn" class="btn-small btn-delete" style="display:none;">✖️ Cancelar</button>
+                            </div>
+                            <div id="writeStatus" class="enroll-status">Precisa de um UID de 8 caracteres hexadecimais (4 bytes) e de um cartão do tipo "mágico" (Gen1A/Gen2/CUID) - cartões comuns têm UID travado de fábrica e não aceitam gravação.</div>
+                        </div>
                     </div>
                     <div class="input-group"><label>👤 Nome do Portador *</label><input type="text" name="holder_name" value="<?php echo $isEditing ? htmlspecialchars($editCard['holder_name']) : ''; ?>" required></div>
                     <div class="input-group"><label>📌 Tipo</label><select name="holder_type"><?php $tipos = ['aluno'=>'Aluno','professor'=>'Professor','funcionario'=>'Funcionário','visitante'=>'Visitante']; foreach($tipos as $k=>$v){ $sel = ($isEditing && $editCard['holder_type']==$k)?'selected':''; echo "<option value='$k' $sel>$v</option>"; } ?></select></div>
@@ -708,6 +726,115 @@ if ($isEditing && $editCard) {
         enrollCancelBtn.addEventListener('click', async () => {
             setEnrollStatus('Leitura cancelada.', '');
             await cancelEnroll();
+        });
+    }
+
+    // Gravar o UID digitado/lido num cartão mágico (Gen1A/Gen2/CUID)
+
+    const writeDevice = document.getElementById('writeDevice');
+    const writeStartBtn = document.getElementById('writeStartBtn');
+    const writeCancelBtn = document.getElementById('writeCancelBtn');
+    const writeStatus = document.getElementById('writeStatus');
+
+    let writePollTimer = null;
+    let writeTimeoutTimer = null;
+    let writeDeviceId = null;
+
+    function setWriteStatus(texto, tipo) {
+        writeStatus.textContent = texto;
+        writeStatus.className = 'enroll-status' + (tipo ? ' ' + tipo : '');
+    }
+
+    function stopWritePolling() {
+        if (writePollTimer) { clearInterval(writePollTimer); writePollTimer = null; }
+        if (writeTimeoutTimer) { clearTimeout(writeTimeoutTimer); writeTimeoutTimer = null; }
+    }
+
+    function resetWriteUI() {
+        stopWritePolling();
+        writeDeviceId = null;
+        writeStartBtn.style.display = '';
+        writeStartBtn.disabled = false;
+        writeCancelBtn.style.display = 'none';
+        writeDevice.disabled = false;
+    }
+
+    if (writeStartBtn) {
+        writeStartBtn.addEventListener('click', async () => {
+            const deviceId = writeDevice.value;
+            const uid = cardUidInput.value.trim().toUpperCase();
+
+            if (!deviceId) { setWriteStatus('Selecione um dispositivo online primeiro.', 'error'); return; }
+            if (!/^[0-9A-F]{8}$/.test(uid)) {
+                setWriteStatus('❌ O UID precisa ter exatamente 8 caracteres hexadecimais (4 bytes) pra gravar num cartão. UID atual: "' + uid + '".', 'error');
+                return;
+            }
+
+            writeDeviceId = deviceId;
+            writeStartBtn.disabled = true;
+            writeDevice.disabled = true;
+
+            try {
+                const res = await fetch('api/write_start.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: deviceId, uid: uid })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    setWriteStatus('❌ ' + (data.message || 'Não foi possível iniciar a gravação.'), 'error');
+                    resetWriteUI();
+                    return;
+                }
+            } catch (e) {
+                setWriteStatus('❌ Erro ao comunicar com o servidor.', 'error');
+                resetWriteUI();
+                return;
+            }
+
+            setWriteStatus('🟡 Aproxime o cartão MÁGICO a ser gravado com o UID ' + uid + '...', 'waiting');
+            writeStartBtn.style.display = 'none';
+            writeCancelBtn.style.display = '';
+
+            writePollTimer = setInterval(pollWrite, 1500);
+            writeTimeoutTimer = setTimeout(async () => {
+                setWriteStatus('⌛ Tempo esgotado. Tente novamente.', 'error');
+                await cancelWrite();
+            }, 30000);
+        });
+    }
+
+    async function pollWrite() {
+        if (!writeDeviceId) return;
+        try {
+            const res = await fetch(`api/write_poll.php?device_id=${writeDeviceId}`);
+            const data = await res.json();
+            if (data.success && data.result) {
+                const ok = data.result.startsWith('OK:');
+                const texto = data.result.replace(/^(OK|ERRO):/, '');
+                setWriteStatus((ok ? '✅ ' : '❌ ') + texto, ok ? 'success' : 'error');
+                resetWriteUI();
+            }
+        } catch (e) {
+            // silencioso - tenta de novo no próximo ciclo
+        }
+    }
+
+    async function cancelWrite() {
+        if (writeDeviceId) {
+            try {
+                await fetch('api/write_cancel.php', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: writeDeviceId })
+                });
+            } catch (e) {}
+        }
+        resetWriteUI();
+    }
+
+    if (writeCancelBtn) {
+        writeCancelBtn.addEventListener('click', async () => {
+            setWriteStatus('Gravação cancelada.', '');
+            await cancelWrite();
         });
     }
 </script>

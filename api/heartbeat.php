@@ -29,6 +29,8 @@ echo json_encode([
     'success' => true,
     'device_id' => (int)$device['id'],
     'device_name' => $device['device_name'],
-    'enroll_mode' => (bool)$device['enroll_mode']
+    'enroll_mode' => (bool)$device['enroll_mode'],
+    'write_mode' => (bool)$device['write_mode'],
+    'write_target_uid' => $device['write_mode'] ? $device['write_target_uid'] : null
 ]);
 ?>
