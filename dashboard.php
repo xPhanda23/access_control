@@ -3,6 +3,7 @@
 require_once 'includes/auth.php';
 requireLogin();
 require_once 'includes/device_helpers.php';
+require_once 'includes/icons.php';
 
 // CONFIGURAÇÃO DE DATA/HORA DO BRASIL
 date_default_timezone_set('America/Sao_Paulo');
@@ -102,90 +103,55 @@ $fullname = $_SESSION['user_fullname'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>AccessPoint - Dashboard</title>
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/style.css?v=<?php echo filemtime(__DIR__ . '/assets/style.css'); ?>">
 
     <style>
+        .greeting-card {
+            background: white;
+            border: 1px solid var(--n-200);
+            border-radius: var(--radius);
+            padding: 18px 22px;
+            margin-bottom: 22px;
+            box-shadow: var(--shadow);
+        }
+        .greeting-card h1 { font-size: 18px; font-weight: 700; color: var(--n-900); }
+        .greeting-card p { color: var(--n-500); font-size: 13px; margin-top: 4px; }
         .devices-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 14px;
+            margin-top: 16px;
         }
         .device-card {
-            background: white;
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .device-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            background: var(--n-50);
+            border: 1px solid var(--n-200);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
         }
         .device-name {
-            font-weight: 700;
-            font-size: 1.1rem;
+            font-weight: 600;
+            font-size: 13.5px;
+            color: var(--n-900);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 8px;
         }
         .device-location {
-            color: #6c757d;
-            font-size: 0.85rem;
-            margin: 8px 0;
-        }
-        .device-status {
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 4px 8px;
-            border-radius: 30px;
-            text-transform: uppercase;
-        }
-        .status-online {
-            background: #e0f2e9;
-            color: #0c6b4b;
-        }
-        .status-offline {
-            background: #ffe6e5;
-            color: #b91c1c;
-        }
-        .overview-cards {
+            color: var(--n-500);
+            font-size: 12.5px;
+            margin: 8px 0 4px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .overview-card {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            flex: 1;
-            min-width: 200px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border-left: 4px solid #2c3e90;
-        }
-        .info-card {
-            background: #f8fafc;
-        }
-        @media (max-width: 768px) {
-            .devices-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        .datetime-banner {
-            background: linear-gradient(105deg, #1e2a5e, #2a3f7e);
-            font-weight: 500;
-            letter-spacing: 0.3px;
-            display: flex;
-            justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
+            gap: 5px;
         }
-        #liveClock {
-            font-family: 'Courier New', monospace;
-            font-size: 1.2rem;
-            font-weight: bold;
+        .device-location .icon { width: 13px; height: 13px; }
+        .device-card small { color: var(--n-400); font-size: 11.5px; }
+        @media (max-width: 768px) {
+            .devices-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -197,53 +163,37 @@ $fullname = $_SESSION['user_fullname'];
 
         <main class="main-content">
             <div class="datetime-banner">
-                <span>📅 <?php echo $data_atual_str; ?></span>
-                <span>🕒 <span id="liveClock">--:--:--</span></span>
+                <span><?php echo icon('calendar'); ?><?php echo $data_atual_str; ?></span>
+                <span><?php echo icon('clock'); ?><span id="liveClock">--:--:--</span></span>
             </div>
 
-            <!-- Saudação personalizada -->
-
-            <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <h1 style="margin: 0; font-size: 24px;"><?php echo $saudacao; ?>, <?php echo htmlspecialchars($fullname); ?>!</h1>
-                <p style="color: #6c757d; margin-top: 8px;">Perfil: <?php echo ($role == 'admin') ? 'Administrador' : 'Direção'; ?></p>
+            <div class="greeting-card">
+                <h1><?php echo $saudacao; ?>, <?php echo htmlspecialchars($fullname); ?></h1>
+                <p><?php echo ($role == 'admin') ? 'Administrador' : 'Direção'; ?></p>
             </div>
-
-            <!-- Cards de estatísticas principais -->
 
             <div class="cards-stats">
                 <div class="stat-card">
-                    <div class="stat-icon">💳</div>
+                    <div class="stat-icon"><?php echo icon('credit-card'); ?></div>
                     <h3>Cartões Ativos</h3>
                     <div class="stat-number"><?php echo $total_cards; ?></div>
-                    <div class="progress-bar-sim">
-                        <div class="progress-fill" style="width: <?php echo min(100, ($total_cards / 75) * 100); ?>%"></div>
-                    </div>
-                    <small>capacidade: 75 cartões</small>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">📡</div>
+                    <div class="stat-icon"><?php echo icon('wifi'); ?></div>
                     <h3>Dispositivos (ESP32)</h3>
                     <div class="stat-number"><?php echo $total_devices; ?></div>
-                    <div class="progress-bar-sim">
-                        <div class="progress-fill" style="width: <?php echo min(100, ($total_devices / 10) * 100); ?>%"></div>
-                    </div>
-                    <small>capacidade: 10</small>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">📋</div>
+                    <div class="stat-icon"><?php echo icon('file-text'); ?></div>
                     <h3>Logs de Hoje</h3>
                     <div class="stat-number"><?php echo $logs_hoje; ?></div>
-                    <div class="progress-bar-sim">
-                        <div class="progress-fill" style="width: <?php echo min(100, ($logs_hoje / 500) * 100); ?>%"></div>
-                    </div>
-                    <small>eventos registrados</small>
                 </div>
             </div>
 
             <!-- Gráfico de Cartões por Tipo -->
 
             <div class="chart-container">
-                <h3>📊 Cartões por Tipo</h3>
+                <h3><?php echo icon('bar-chart'); ?>Cartões por Tipo</h3>
                 <?php
                 $max_total = max(array_values($cards_por_tipo)) ?: 1;
                 $tipos_nomes = [
@@ -269,8 +219,8 @@ $fullname = $_SESSION['user_fullname'];
 
             <!-- Seção: Status dos Dispositivos (ESP32) -->
 
-            <div style="background: white; border-radius: 16px; padding: 20px; margin: 30px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <h3 style="margin-bottom: 15px;">📡 Status dos Dispositivos (ESP32)</h3>
+            <div class="card-form">
+                <h2><?php echo icon('wifi'); ?>Status dos Dispositivos</h2>
                 <div class="devices-grid">
                     <?php if ($devices_result && $devices_result->num_rows > 0): ?>
                         <?php while ($device = $devices_result->fetch_assoc()): ?>
@@ -278,11 +228,11 @@ $fullname = $_SESSION['user_fullname'];
                             <div class="device-card">
                                 <div class="device-name">
                                     <?php echo htmlspecialchars($device['device_name']); ?>
-                                    <span class="device-status <?php echo $realmenteOnline ? 'status-online' : 'status-offline'; ?>">
-                                        <?php echo $realmenteOnline ? '● ONLINE' : '● OFFLINE'; ?>
+                                    <span class="status-badge <?php echo $realmenteOnline ? 'online' : 'offline'; ?>">
+                                        <?php echo icon('dot'); ?><?php echo $realmenteOnline ? 'Online' : 'Offline'; ?>
                                     </span>
                                 </div>
-                                <div class="device-location">📍 <?php echo htmlspecialchars($device['location'] ?: 'Local não definido'); ?></div>
+                                <div class="device-location"><?php echo icon('map-pin'); ?><?php echo htmlspecialchars($device['location'] ?: 'Local não definido'); ?></div>
                                 <small>Última atualização: <?php echo $device['last_seen'] ? date('d/m H:i', strtotime($device['last_seen'])) : 'nunca'; ?></small>
                             </div>
                         <?php endwhile; ?>
@@ -295,43 +245,28 @@ $fullname = $_SESSION['user_fullname'];
             <!-- Últimos Acessos Registrados (Timeline) -->
 
             <div class="timeline">
-                <h3>🕒 Últimos Acessos Registrados</h3>
+                <h3><?php echo icon('clock'); ?>Últimos Acessos</h3>
                 <?php if ($ultimos_logs && $ultimos_logs->num_rows > 0): ?>
                     <?php while ($log = $ultimos_logs->fetch_assoc()): ?>
                         <div class="timeline-item">
-                            <div class="timeline-icon">
-                                <?php echo $log['access_granted'] ? '✅' : '❌'; ?>
+                            <div class="timeline-icon <?php echo $log['access_granted'] ? 'granted' : 'denied'; ?>">
+                                <?php echo $log['access_granted'] ? icon('check') : icon('x'); ?>
                             </div>
                             <div class="timeline-content">
-                                <strong>Cartão: <?php echo htmlspecialchars($log['card_uid']); ?></strong> - 
+                                <strong>Cartão: <?php echo htmlspecialchars($log['card_uid']); ?></strong> -
                                 <?php echo htmlspecialchars($log['device_name']); ?>
                                 <div class="timeline-time">
                                     <?php echo date('d/m/Y H:i:s', strtotime($log['created_at'])); ?>
                                 </div>
                             </div>
-                            <div style="color: <?php echo $log['access_granted'] ? '#10b981' : '#ef4444'; ?>">
+                            <div style="color: <?php echo $log['access_granted'] ? 'var(--success)' : 'var(--danger)'; ?>; font-size: 13px; font-weight: 600;">
                                 <?php echo $log['access_granted'] ? 'Autorizado' : 'Bloqueado'; ?>
                             </div>
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <p>Nenhum acesso registrado ainda. Quando o sistema estiver operando com o ESP32, os eventos aparecerão aqui.</p>
+                    <p>Nenhum acesso registrado ainda.</p>
                 <?php endif; ?>
-            </div>
-
-            <!-- Visão Geral do Sistema -->
-
-            <div class="overview-cards">
-                <div class="overview-card">
-                    <h3>📌 Resumo Operacional</h3>
-                    <ul style="margin-top: 12px; line-height: 1.6; padding-left: 20px;">
-                        <li><strong><?php echo $total_cards; ?></strong> cartões ativos em circulação.</li>
-                        <li><strong><?php echo $total_devices; ?></strong> pontos de acesso (ESP32).</li>
-                        <li>Comunidade escolar acessa áreas permitidas com cartão RFID.</li>
-                        <li>Direção gerencia cartões, dispositivos e acompanha logs em tempo real.</li>
-                        <li>Administrador possui controle total do sistema e usuários.</li>
-                    </ul>
-                </div>
             </div>
         </main>
     </div>
@@ -350,10 +285,10 @@ $fullname = $_SESSION['user_fullname'];
         setInterval(updateClock, 1000);
         updateClock();
 
-        // Animação das barras de progresso
+        // Animação das barras do gráfico
 
         document.addEventListener('DOMContentLoaded', function() {
-            const fills = document.querySelectorAll('.progress-fill, .chart-fill');
+            const fills = document.querySelectorAll('.chart-fill');
             fills.forEach(fill => {
                 const width = fill.style.width;
                 fill.style.width = '0%';

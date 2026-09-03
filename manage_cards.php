@@ -3,6 +3,7 @@
 require_once 'includes/auth.php';
 requireLogin();
 require_once 'includes/device_helpers.php';
+require_once 'includes/icons.php';
 
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
@@ -17,9 +18,9 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $id = intval($_GET['delete']);
     $conn->query("DELETE FROM card_access WHERE card_id = $id");
     if ($conn->query("DELETE FROM cards WHERE id = $id")) {
-        $message = "✅ Cartão removido com sucesso!";
+        $message = "Cartão removido com sucesso.";
     } else {
-        $error = "❌ Erro ao remover cartão.";
+        $error = "Erro ao remover cartão.";
     }
     header("Location: manage_cards.php?msg=" . urlencode($message) . "&err=" . urlencode($error));
     exit;
@@ -28,7 +29,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
 if (isset($_GET['toggle']) && is_numeric($_GET['toggle'])) {
     $id = intval($_GET['toggle']);
     $conn->query("UPDATE cards SET status = IF(status='active', 'blocked', 'active') WHERE id=$id");
-    $message = "✅ Status alterado com sucesso!";
+    $message = "Status alterado com sucesso.";
     header("Location: manage_cards.php?msg=" . urlencode($message));
     exit;
 }
@@ -46,9 +47,9 @@ if (isset($_GET['duplicate']) && is_numeric($_GET['duplicate'])) {
         while ($perm = $perms->fetch_assoc()) {
             $conn->query("INSERT INTO card_access (card_id, device_id) VALUES ($new_id, {$perm['device_id']})");
         }
-        $message = "✅ Cartão duplicado com sucesso! (UID ajustado)";
+        $message = "Cartão duplicado com sucesso (UID ajustado).";
     } else {
-        $error = "❌ Cartão original não encontrado.";
+        $error = "Cartão original não encontrado.";
     }
     header("Location: manage_cards.php?msg=" . urlencode($message) . "&err=" . urlencode($error));
     exit;
@@ -61,7 +62,7 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
         $editCard = $result->fetch_assoc();
         $isEditing = true;
     } else {
-        $error = "❌ Cartão não encontrado.";
+        $error = "Cartão não encontrado.";
         header("Location: manage_cards.php?err=" . urlencode($error));
         exit;
     }
@@ -91,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $check->execute();
             $check->store_result();
             if ($check->num_rows > 0) {
-                $error = "❌ UID já cadastrado.";
+                $error = "UID já cadastrado.";
             } else {
                 $stmt = $conn->prepare("INSERT INTO cards (card_uid, holder_name, holder_type, status) VALUES (?,?,?,?)");
                 $stmt->bind_param("ssss", $card_uid, $holder_name, $holder_type, $status);
@@ -100,9 +101,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     foreach ($devices as $d) {
                         $conn->query("INSERT INTO card_access (card_id, device_id) VALUES ($new_id, " . intval($d) . ")");
                     }
-                    $message = "✅ Cartão criado com sucesso!";
+                    $message = "Cartão criado com sucesso.";
                 } else {
-                    $error = "❌ Erro ao criar: " . $conn->error;
+                    $error = "Erro ao criar: " . $conn->error;
                 }
                 $stmt->close();
             }
@@ -113,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $check->execute();
             $check->store_result();
             if ($check->num_rows > 0) {
-                $error = "❌ UID já usado por outro cartão.";
+                $error = "UID já usado por outro cartão.";
             } else {
                 $stmt = $conn->prepare("UPDATE cards SET card_uid=?, holder_name=?, holder_type=?, status=? WHERE id=?");
                 $stmt->bind_param("ssssi", $card_uid, $holder_name, $holder_type, $status, $card_id);
@@ -122,9 +123,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     foreach ($devices as $d) {
                         $conn->query("INSERT INTO card_access (card_id, device_id) VALUES ($card_id, " . intval($d) . ")");
                     }
-                    $message = "✅ Cartão atualizado com sucesso!";
+                    $message = "Cartão atualizado com sucesso.";
                 } else {
-                    $error = "❌ Erro ao atualizar: " . $conn->error;
+                    $error = "Erro ao atualizar: " . $conn->error;
                 }
                 $stmt->close();
             }
@@ -177,246 +178,39 @@ if ($isEditing && $editCard) {
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AccessPoint - Gerenciar Cartões</title>
-    <link rel="stylesheet" href="assets/style.css">
+    <title>AccessPoint - Cartões</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/style.css?v=<?php echo filemtime(__DIR__ . '/assets/style.css'); ?>">
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: #f1f5f9;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        }
-        .app-container {
-            display: flex;
-            min-height: 100vh;
-        }
-        /* Cards e containers */
-        .card-form, .filter-bar, .info-card {
-            background: white;
-            border-radius: 24px;
-            padding: 28px;
-            margin-bottom: 32px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .filter-bar {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 16px;
-            align-items: center;
-        }
-        .search-box {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 40px;
-            padding: 6px 16px;
-        }
-        .search-box input {
-            border: none;
-            background: transparent;
-            padding: 10px 0;
-            width: 240px;
-            outline: none;
-        }
-        .filter-group select {
-            padding: 10px 16px;
-            border-radius: 30px;
-            border: 1px solid #e2e8f0;
-            background: white;
-            font-size: 0.9rem;
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 24px;
-            margin-bottom: 24px;
-        }
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .input-group label {
-            font-weight: 600;
-            color: #1e293b;
-        }
-        .input-group input, .input-group select {
-            padding: 12px 16px;
-            border: 1px solid #cbd5e1;
-            border-radius: 16px;
-            font-size: 0.95rem;
-            transition: 0.2s;
-        }
-        .input-group input:focus, .input-group select:focus {
-            border-color: #4361ee;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(67,97,238,0.1);
-        }
-        .checkbox-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            background: #f8fafc;
-            padding: 16px;
-            border-radius: 20px;
-            margin-top: 8px;
-        }
-        .btn-primary {
-            background: linear-gradient(105deg, #4361ee, #3a56d4);
-            color: white;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 40px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(67,97,238,0.3);
-        }
-        .data-table {
-            width: 100%;
-            background: white;
-            border-radius: 24px;
-            overflow-x: auto;
-            border-collapse: collapse;
-        }
-        .data-table th, .data-table td {
-            padding: 16px;
-            text-align: left;
-            border-bottom: 1px solid #eef2ff;
-        }
-        .data-table th {
-            background: #f8fafc;
-            font-weight: 600;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        .status-badge.active {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        .status-badge.blocked {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        .actions-cell {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .btn-small {
-            padding: 5px 12px;
-            border-radius: 30px;
-            font-size: 0.75rem;
-            text-decoration: none;
-            background: #f1f5f9;
-            color: #1e293b;
-            transition: 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-            border: none;
-        }
-        .btn-small:hover {
-            background: #e2e8f0;
-        }
-        .btn-edit { background: #e0e7ff; color: #3730a3; }
-        .btn-toggle { background: #fef3c7; color: #92400e; }
-        .btn-delete { background: #fee2e2; color: #991b1b; }
-        .enroll-box { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 16px; padding: 16px; margin-top: 8px; }
-        .enroll-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-        .enroll-row select { padding: 10px 14px; border-radius: 14px; border: 1px solid #cbd5e1; }
-        .enroll-status { font-size: 0.85rem; font-weight: 600; margin-top: 10px; }
-        .enroll-status.waiting { color: #92400e; }
-        .enroll-status.success { color: #065f46; }
+        h1 { display: flex; align-items: center; gap: 10px; font-size: 20px; margin-bottom: 22px; }
+        h1 .icon { width: 22px; height: 22px; color: var(--n-400); }
+        h2.section-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; margin: 28px 0 14px; color: var(--n-900); }
+        h2.section-title .icon { width: 16px; height: 16px; color: var(--n-400); }
+        .enroll-box { background: var(--n-50); border: 1px dashed var(--n-300); border-radius: var(--radius-sm); padding: 14px; margin-top: 10px; }
+        .enroll-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; color: var(--n-700); }
+        .enroll-row select { padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--n-300); font-size: 13px; }
+        .enroll-status { font-size: 12.5px; font-weight: 600; margin-top: 8px; }
+        .enroll-status.waiting { color: var(--warning); }
+        .enroll-status.success { color: #166534; }
         .enroll-status.error { color: #991b1b; }
-        .alert {
-            padding: 16px 20px;
-            border-radius: 20px;
-            margin: 20px 0;
-        }
-        .alert-success { background: #d1fae5; color: #065f46; border-left: 5px solid #10b981; }
-        .alert-error { background: #fee2e2; color: #991b1b; border-left: 5px solid #ef4444; }
-        /* Modal personalizado */
-        .modal {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            visibility: hidden;
-            opacity: 0;
-            transition: 0.2s;
-        }
-        .modal.active {
-            visibility: visible;
-            opacity: 1;
-        }
-        .modal-content {
-            background: white;
-            border-radius: 32px;
-            padding: 32px;
-            max-width: 450px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 30px 40px rgba(0,0,0,0.2);
-        }
-        .modal-buttons {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            margin-top: 28px;
-        }
-        .modal-buttons button {
-            padding: 10px 24px;
-            border: none;
-            border-radius: 40px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .modal-confirm { background: #ef4444; color: white; }
-        .modal-cancel { background: #e2e8f0; }
-        @media (max-width: 768px) {
-            .main-content { padding: 20px; }
-            .sidebar { width: 100%; position: relative; height: auto; }
-            .app-container { flex-direction: column; }
-            .filter-bar { flex-direction: column; align-items: stretch; }
-            .search-box input { width: 100%; }
-        }
-
     </style>
 </head>
 <body>
 <div class="app-container">
-    
+
     <?php include 'includes/sidebar.php'; ?>
 
     <main class="main-content">
-        <h1 style="margin-bottom: 24px;">💳 Gerenciamento de Cartões</h1>
+        <h1><?php echo icon('credit-card'); ?>Cartões de Acesso</h1>
 
         <!-- Barra de filtros e busca -->
 
         <div class="filter-bar">
             <div class="search-box">
-                🔍 <input type="text" id="searchInput" placeholder="Nome ou UID...">
+                <?php echo icon('search'); ?><input type="text" id="searchInput" placeholder="Nome ou UID...">
             </div>
             <div class="filter-group">
                 <select id="typeFilter"><option value="">Todos os tipos</option>
@@ -429,23 +223,23 @@ if ($isEditing && $editCard) {
 
         <!-- Mensagens de retorno -->
 
-        <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
-        <?php if ($error): ?><div class="alert alert-error"><?php echo $error; ?></div><?php endif; ?>
+        <?php if ($message): ?><div class="alert alert-success"><?php echo icon('check'); ?><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
+        <?php if ($error): ?><div class="alert alert-error"><?php echo icon('alert'); ?><?php echo $error; ?></div><?php endif; ?>
 
         <!-- Formulário -->
 
         <div class="card-form">
-            <h2 style="margin-bottom: 24px;"><?php echo $isEditing ? '✏️ Editar Cartão' : '➕ Novo Cartão'; ?></h2>
+            <h2><?php echo $isEditing ? icon('edit') . 'Editar Cartão' : icon('plus') . 'Novo Cartão'; ?></h2>
             <form method="POST" id="cardForm">
                 <input type="hidden" name="action" value="<?php echo $isEditing ? 'update' : 'create'; ?>">
                 <?php if ($isEditing): ?><input type="hidden" name="card_id" value="<?php echo $editCard['id']; ?>"><?php endif; ?>
                 <div class="form-grid">
                     <div class="input-group">
-                        <label>🔑 UID do Cartão *</label>
+                        <label>UID do Cartão *</label>
                         <input type="text" name="card_uid" id="card_uid" value="<?php echo $isEditing ? htmlspecialchars($editCard['card_uid']) : ''; ?>" required placeholder="ex: A1B2C3D4">
                         <div class="enroll-box">
                             <div class="enroll-row">
-                                <span>📡 Ler UID pelo leitor:</span>
+                                <span>Ler UID pelo leitor:</span>
                                 <select id="enrollDevice" <?php echo empty($online_devices) ? 'disabled' : ''; ?>>
                                     <?php if (empty($online_devices)): ?>
                                         <option value="">Nenhum ESP32 online</option>
@@ -456,14 +250,14 @@ if ($isEditing && $editCard) {
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </select>
-                                <button type="button" id="enrollStartBtn" class="btn-small btn-edit" <?php echo empty($online_devices) ? 'disabled' : ''; ?>>▶️ Iniciar leitura</button>
-                                <button type="button" id="enrollCancelBtn" class="btn-small btn-delete" style="display:none;">✖️ Cancelar</button>
+                                <button type="button" id="enrollStartBtn" class="btn-small btn-edit" <?php echo empty($online_devices) ? 'disabled' : ''; ?>><?php echo icon('wifi'); ?>Iniciar leitura</button>
+                                <button type="button" id="enrollCancelBtn" class="btn-small btn-danger" style="display:none;"><?php echo icon('x'); ?>Cancelar</button>
                             </div>
                             <div id="enrollStatus" class="enroll-status"></div>
                         </div>
                         <div class="enroll-box">
                             <div class="enroll-row">
-                                <span>🔏 Gravar este UID num cartão mágico:</span>
+                                <span>Gravar este UID num cartão mágico:</span>
                                 <select id="writeDevice" <?php echo empty($online_devices) ? 'disabled' : ''; ?>>
                                     <?php if (empty($online_devices)): ?>
                                         <option value="">Nenhum ESP32 online</option>
@@ -474,30 +268,30 @@ if ($isEditing && $editCard) {
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </select>
-                                <button type="button" id="writeStartBtn" class="btn-small btn-edit" <?php echo empty($online_devices) ? 'disabled' : ''; ?>>🔏 Gravar no cartão</button>
-                                <button type="button" id="writeCancelBtn" class="btn-small btn-delete" style="display:none;">✖️ Cancelar</button>
+                                <button type="button" id="writeStartBtn" class="btn-small btn-edit" <?php echo empty($online_devices) ? 'disabled' : ''; ?>><?php echo icon('lock'); ?>Gravar no cartão</button>
+                                <button type="button" id="writeCancelBtn" class="btn-small btn-danger" style="display:none;"><?php echo icon('x'); ?>Cancelar</button>
                             </div>
-                            <div id="writeStatus" class="enroll-status">Precisa de um UID de 8 caracteres hexadecimais (4 bytes) e de um cartão do tipo "mágico" (Gen1A/Gen2/CUID) - cartões comuns têm UID travado de fábrica e não aceitam gravação.</div>
+                            <div id="writeStatus" class="enroll-status">Requer UID de 8 caracteres hex e um cartão do tipo "mágico" (Gen1A/Gen2/CUID).</div>
                         </div>
                     </div>
-                    <div class="input-group"><label>👤 Nome do Portador *</label><input type="text" name="holder_name" value="<?php echo $isEditing ? htmlspecialchars($editCard['holder_name']) : ''; ?>" required></div>
-                    <div class="input-group"><label>📌 Tipo</label><select name="holder_type"><?php $tipos = ['aluno'=>'Aluno','professor'=>'Professor','funcionario'=>'Funcionário','visitante'=>'Visitante']; foreach($tipos as $k=>$v){ $sel = ($isEditing && $editCard['holder_type']==$k)?'selected':''; echo "<option value='$k' $sel>$v</option>"; } ?></select></div>
-                    <div class="input-group"><label>⚡ Status</label><select name="status"><option value="active" <?php echo ($isEditing && $editCard['status']=='active')?'selected':''; ?>>Ativo</option><option value="blocked" <?php echo ($isEditing && $editCard['status']=='blocked')?'selected':''; ?>>Bloqueado</option></select></div>
+                    <div class="input-group"><label>Nome do Portador *</label><input type="text" name="holder_name" value="<?php echo $isEditing ? htmlspecialchars($editCard['holder_name']) : ''; ?>" required></div>
+                    <div class="input-group"><label>Tipo</label><select name="holder_type"><?php $tipos = ['aluno'=>'Aluno','professor'=>'Professor','funcionario'=>'Funcionário','visitante'=>'Visitante']; foreach($tipos as $k=>$v){ $sel = ($isEditing && $editCard['holder_type']==$k)?'selected':''; echo "<option value='$k' $sel>$v</option>"; } ?></select></div>
+                    <div class="input-group"><label>Status</label><select name="status"><option value="active" <?php echo ($isEditing && $editCard['status']=='active')?'selected':''; ?>>Ativo</option><option value="blocked" <?php echo ($isEditing && $editCard['status']=='blocked')?'selected':''; ?>>Bloqueado</option></select></div>
                 </div>
-                <div><label>🔓 Permissões (portas que este cartão pode abrir)</label>
+                <div><label>Permissões (portas que este cartão pode abrir)</label>
                     <div class="checkbox-group">
                         <?php if ($devices_list && $devices_list->num_rows > 0): $devices_list->data_seek(0); while($dev = $devices_list->fetch_assoc()): ?>
                             <label><input type="checkbox" name="devices[]" value="<?php echo $dev['id']; ?>" <?php if ($isEditing && in_array($dev['id'], $card_permissions)) echo 'checked'; ?>> <?php echo htmlspecialchars($dev['device_name']); ?></label>
                         <?php endwhile; else: ?><p>Nenhum dispositivo. <a href="manage_devices.php">Criar agora</a></p><?php endif; ?>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary" style="margin-top: 24px;">💾 Salvar Cartão</button>
+                <button type="submit" class="btn btn-primary" style="margin-top: 22px;"><?php echo icon('save'); ?>Salvar Cartão</button>
             </form>
         </div>
 
         <!-- Tabela -->
 
-        <h2 style="margin: 32px 0 16px;">📋 Cartões Cadastrados</h2>
+        <h2 class="section-title"><?php echo icon('file-text'); ?>Cartões Cadastrados</h2>
         <div style="overflow-x: auto;">
             <table class="data-table" id="cardsTable">
                 <thead><tr><th>ID</th><th>UID</th><th>Portador</th><th>Tipo</th><th>Status</th><th>Permissões</th><th>Ações</th></tr></thead>
@@ -506,33 +300,32 @@ if ($isEditing && $editCard) {
                         <?php while($card = $cards_result->fetch_assoc()): ?>
                             <tr data-type="<?php echo $card['holder_type']; ?>" data-status="<?php echo $card['status']; ?>" data-name="<?php echo strtolower($card['holder_name']); ?>" data-uid="<?php echo $card['card_uid']; ?>">
                                 <td><?php echo $card['id']; ?></td>
-                                <td><code><?php echo htmlspecialchars($card['card_uid']); ?></code> <button class="btn-small copy-uid" data-uid="<?php echo $card['card_uid']; ?>">📋 Copiar</button></td>
+                                <td><code><?php echo htmlspecialchars($card['card_uid']); ?></code> <button class="btn-small copy-uid" data-uid="<?php echo $card['card_uid']; ?>"><?php echo icon('copy'); ?></button></td>
                                 <td><?php echo htmlspecialchars($card['holder_name']); ?></td>
                                 <td><?php echo $card['holder_type']; ?></td>
                                 <td><span class="status-badge <?php echo $card['status']; ?>"><?php echo $card['status']=='active'?'Ativo':'Bloqueado'; ?></span></td>
                                 <td><?php echo htmlspecialchars($card['devices_names'] ?: 'Nenhuma'); ?></td>
                                 <td class="actions-cell">
-                                    <a href="?edit=<?php echo $card['id']; ?>" class="btn-small btn-edit">✏️ Editar</a>
-                                    <button class="btn-small btn-toggle" data-id="<?php echo $card['id']; ?>">🔄 Alternar</button>
-                                    <button class="btn-small" data-duplicate="<?php echo $card['id']; ?>">📋 Duplicar</button>
-                                    <button class="btn-small btn-test" data-uid="<?php echo $card['card_uid']; ?>">📡 Testar</button>
-                                    <a href="access_logs.php?card=<?php echo $card['card_uid']; ?>" class="btn-small">📜 Logs</a>
-                                    <button class="btn-small btn-delete" data-id="<?php echo $card['id']; ?>" data-name="<?php echo htmlspecialchars($card['holder_name']); ?>">🗑️ Excluir</button>
+                                    <a href="?edit=<?php echo $card['id']; ?>" class="btn-small btn-edit"><?php echo icon('edit'); ?>Editar</a>
+                                    <button class="btn-small btn-toggle" data-id="<?php echo $card['id']; ?>"><?php echo icon('refresh-cw'); ?>Alternar</button>
+                                    <button class="btn-small" data-duplicate="<?php echo $card['id']; ?>"><?php echo icon('copy'); ?>Duplicar</button>
+                                    <button class="btn-small btn-test" data-uid="<?php echo $card['card_uid']; ?>"><?php echo icon('wifi'); ?>Testar</button>
+                                    <a href="access_logs.php?card=<?php echo $card['card_uid']; ?>" class="btn-small"><?php echo icon('file-text'); ?>Logs</a>
+                                    <button type="button" class="btn-small btn-danger" data-delete-url="manage_cards.php?delete=<?php echo $card['id']; ?>" data-name="<?php echo htmlspecialchars($card['holder_name'], ENT_QUOTES); ?>"><?php echo icon('trash'); ?>Excluir</button>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
-                    <?php else: ?><tr><td colspan="7">Nenhum cartão cadastrado.</td></tr><?php endif; ?>
+                    <?php else: ?><tr><td colspan="7" style="text-align:center; color: var(--n-500);">Nenhum cartão cadastrado.</td></tr><?php endif; ?>
                 </tbody>
             </table>
         </div>
     </main>
 </div>
 
-<!-- Modal Exclusão -->
-<div id="deleteModal" class="modal"><div class="modal-content"><h3>🗑️ Confirmar exclusão</h3><p id="deleteMsg">Deseja excluir este cartão?</p><div class="modal-buttons"><button id="confirmDelete">Excluir</button><button id="cancelDelete">Cancelar</button></div></div></div>
 <!-- Modal Teste -->
-<div id="testModal" class="modal"><div class="modal-content"><h3>📡 Teste de Acesso</h3><p id="testMsg">Verificando...</p><div class="modal-buttons"><button id="closeTestModal">Fechar</button></div></div></div>
+<div id="testModal" class="modal"><div class="modal-content"><h3><?php echo icon('wifi'); ?>Teste de Acesso</h3><p id="testMsg">Verificando...</p><div class="modal-buttons"><button id="closeTestModal" class="modal-cancel">Fechar</button></div></div></div>
 
+<script src="assets/script.js"></script>
 <script>
 
     // Filtros
@@ -558,7 +351,7 @@ if ($isEditing && $editCard) {
 
     // Copiar UID
 
-    document.querySelectorAll('.copy-uid').forEach(btn => btn.addEventListener('click', () => { navigator.clipboard.writeText(btn.dataset.uid); mostrarModalMensagem('✅ UID copiado!'); }));
+    document.querySelectorAll('.copy-uid').forEach(btn => btn.addEventListener('click', () => { navigator.clipboard.writeText(btn.dataset.uid); mostrarModalMensagem('UID copiado.'); }));
 
     // Alternar status via fetch (sem recarregar automaticamente)
 
@@ -567,7 +360,7 @@ if ($isEditing && $editCard) {
         const id = btn.dataset.id;
         const res = await fetch(`manage_cards.php?toggle=${id}`);
         if (res.ok) location.reload();
-        else mostrarModalMensagem('❌ Erro ao alterar status');
+        else mostrarModalMensagem('Erro ao alterar status.');
     }));
 
     // Duplicar
@@ -578,21 +371,6 @@ if ($isEditing && $editCard) {
         mostrarModalConfirmacao('Duplicar cartão?', () => window.location.href = `manage_cards.php?duplicate=${id}`);
     }));
 
-    // Exclusão modal
-
-    let deleteId = null;
-    const deleteModal = document.getElementById('deleteModal');
-    const deleteMsg = document.getElementById('deleteMsg');
-    document.querySelectorAll('.btn-delete').forEach(btn => btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        deleteId = btn.dataset.id;
-        deleteMsg.innerText = `Excluir cartão de ${btn.dataset.name}?`;
-        deleteModal.classList.add('active');
-    }));
-    document.getElementById('confirmDelete').onclick = () => { if(deleteId) window.location.href = `manage_cards.php?delete=${deleteId}`; };
-    document.getElementById('cancelDelete').onclick = () => deleteModal.classList.remove('active');
-    deleteModal.addEventListener('click', (e) => { if(e.target === deleteModal) deleteModal.classList.remove('active'); });
-
     // Teste com API
 
     const testModal = document.getElementById('testModal');
@@ -600,15 +378,15 @@ if ($isEditing && $editCard) {
     document.querySelectorAll('.btn-test').forEach(btn => btn.addEventListener('click', async (e) => {
         e.preventDefault();
         const cardUid = btn.dataset.uid;
-        const deviceId = prompt('Digite o ID do dispositivo (ex: 1 para Sala de Robótica):', '1');
+        const deviceId = prompt('ID do dispositivo a testar:', '1');
         if (!deviceId) return;
         testMsg.innerText = 'Verificando...';
         testModal.classList.add('active');
         try {
             const res = await fetch('api/verify_card.php', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ card_uid:cardUid, device_id:parseInt(deviceId) }) });
             const data = await res.json();
-            testMsg.innerHTML = data.success ? `✅ ACESSO PERMITIDO!<br>${data.message}` : `❌ ACESSO NEGADO!<br>${data.message}`;
-        } catch(err) { testMsg.innerHTML = '❌ Erro ao comunicar com a API.'; }
+            testMsg.innerHTML = data.success ? `<strong style="color:var(--success)">Acesso permitido</strong><br>${data.message}` : `<strong style="color:var(--danger)">Acesso negado</strong><br>${data.message}`;
+        } catch(err) { testMsg.innerHTML = 'Erro ao comunicar com a API.'; }
     }));
     document.getElementById('closeTestModal').onclick = () => testModal.classList.remove('active');
     testModal.addEventListener('click', (e) => { if(e.target === testModal) testModal.classList.remove('active'); });
@@ -620,7 +398,7 @@ if ($isEditing && $editCard) {
         setTimeout(() => modal.remove(), 2000);
     }
     function mostrarModalConfirmacao(texto, callback) {
-        const modal = document.createElement('div'); modal.className = 'modal active'; modal.innerHTML = `<div class="modal-content"><h3>Confirmação</h3><p>${texto}</p><div class="modal-buttons"><button class="modal-confirm">Sim</button><button class="modal-cancel">Não</button></div></div>`;
+        const modal = document.createElement('div'); modal.className = 'modal active'; modal.innerHTML = `<div class="modal-content"><h3>Confirmação</h3><p>${texto}</p><div class="modal-buttons"><button class="modal-cancel">Não</button><button class="modal-confirm">Sim</button></div></div>`;
         document.body.appendChild(modal);
         modal.querySelector('.modal-confirm').onclick = () => { modal.remove(); callback(); };
         modal.querySelector('.modal-cancel').onclick = () => modal.remove();
@@ -673,23 +451,23 @@ if ($isEditing && $editCard) {
                 });
                 const data = await res.json();
                 if (!data.success) {
-                    setEnrollStatus('❌ ' + (data.message || 'Não foi possível iniciar a leitura.'), 'error');
+                    setEnrollStatus(data.message || 'Não foi possível iniciar a leitura.', 'error');
                     resetEnrollUI();
                     return;
                 }
             } catch (e) {
-                setEnrollStatus('❌ Erro ao comunicar com o servidor.', 'error');
+                setEnrollStatus('Erro ao comunicar com o servidor.', 'error');
                 resetEnrollUI();
                 return;
             }
 
-            setEnrollStatus('🟡 Aproxime o cartão do leitor no ESP32...', 'waiting');
+            setEnrollStatus('Aproxime o cartão do leitor no ESP32...', 'waiting');
             enrollStartBtn.style.display = 'none';
             enrollCancelBtn.style.display = '';
 
             enrollPollTimer = setInterval(pollEnroll, 1500);
             enrollTimeoutTimer = setTimeout(async () => {
-                setEnrollStatus('⌛ Tempo esgotado. Tente novamente.', 'error');
+                setEnrollStatus('Tempo esgotado. Tente novamente.', 'error');
                 await cancelEnroll();
             }, 30000);
         });
@@ -702,7 +480,7 @@ if ($isEditing && $editCard) {
             const data = await res.json();
             if (data.success && data.uid) {
                 cardUidInput.value = data.uid;
-                setEnrollStatus('✅ UID capturado: ' + data.uid, 'success');
+                setEnrollStatus('UID capturado: ' + data.uid, 'success');
                 resetEnrollUI();
             }
         } catch (e) {
@@ -766,7 +544,7 @@ if ($isEditing && $editCard) {
 
             if (!deviceId) { setWriteStatus('Selecione um dispositivo online primeiro.', 'error'); return; }
             if (!/^[0-9A-F]{8}$/.test(uid)) {
-                setWriteStatus('❌ O UID precisa ter exatamente 8 caracteres hexadecimais (4 bytes) pra gravar num cartão. UID atual: "' + uid + '".', 'error');
+                setWriteStatus('UID precisa ter 8 caracteres hexadecimais para gravar. Atual: "' + uid + '".', 'error');
                 return;
             }
 
@@ -781,23 +559,23 @@ if ($isEditing && $editCard) {
                 });
                 const data = await res.json();
                 if (!data.success) {
-                    setWriteStatus('❌ ' + (data.message || 'Não foi possível iniciar a gravação.'), 'error');
+                    setWriteStatus(data.message || 'Não foi possível iniciar a gravação.', 'error');
                     resetWriteUI();
                     return;
                 }
             } catch (e) {
-                setWriteStatus('❌ Erro ao comunicar com o servidor.', 'error');
+                setWriteStatus('Erro ao comunicar com o servidor.', 'error');
                 resetWriteUI();
                 return;
             }
 
-            setWriteStatus('🟡 Aproxime o cartão MÁGICO a ser gravado com o UID ' + uid + '...', 'waiting');
+            setWriteStatus('Aproxime o cartão mágico a ser gravado com o UID ' + uid + '...', 'waiting');
             writeStartBtn.style.display = 'none';
             writeCancelBtn.style.display = '';
 
             writePollTimer = setInterval(pollWrite, 1500);
             writeTimeoutTimer = setTimeout(async () => {
-                setWriteStatus('⌛ Tempo esgotado. Tente novamente.', 'error');
+                setWriteStatus('Tempo esgotado. Tente novamente.', 'error');
                 await cancelWrite();
             }, 30000);
         });
@@ -811,7 +589,7 @@ if ($isEditing && $editCard) {
             if (data.success && data.result) {
                 const ok = data.result.startsWith('OK:');
                 const texto = data.result.replace(/^(OK|ERRO):/, '');
-                setWriteStatus((ok ? '✅ ' : '❌ ') + texto, ok ? 'success' : 'error');
+                setWriteStatus(texto, ok ? 'success' : 'error');
                 resetWriteUI();
             }
         } catch (e) {

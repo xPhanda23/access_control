@@ -1,6 +1,7 @@
 <?php
 
 require_once 'includes/auth.php';
+require_once 'includes/icons.php';
 
 // Se já estiver logado, vai direto para o dashboard
 
@@ -49,18 +50,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AccessPoint - Login</title>
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/style.css?v=<?php echo filemtime(__DIR__ . '/assets/style.css'); ?>">
 </head>
 <body class="login-page">
     <div class="login-container">
         <div class="login-card">
             <div class="login-header">
-                <div class="icon">🔐</div>
+                <div class="icon-badge"><?php echo icon('lock'); ?></div>
                 <h1>AccessPoint</h1>
                 <p>Gestão de cartões e dispositivos</p>
             </div>
             <?php if ($error): ?>
-                <div class="alert alert-error"><?php echo htmlspecialchars($error); ?></div>
+                <div class="alert alert-error"><?php echo icon('alert'); ?><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
             <form method="POST" action="" class="login-form">
                 <div class="input-group">

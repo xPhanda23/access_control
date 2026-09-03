@@ -86,7 +86,7 @@ echo json_encode(['success' => true, 'message' => $msg, 'open_door' => true]);
 function logAccess($card_uid, $device_id, $device_name, $granted, $message) {
     global $conn;
     $stmt = $conn->prepare("INSERT INTO access_logs (card_uid, device_id, device_name, access_granted, message) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("sissi", $card_uid, $device_id, $device_name, $granted, $message);
+    $stmt->bind_param("sisis", $card_uid, $device_id, $device_name, $granted, $message);
     $stmt->execute();
 }
 ?>

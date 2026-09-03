@@ -2,6 +2,7 @@
 
 require_once 'includes/auth.php';
 requireLogin();
+require_once 'includes/icons.php';
 
 $conn = mysqli_connect('localhost', 'root', '', 'access_control');
 
@@ -75,123 +76,24 @@ $total_logs = $logs_result->num_rows;
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AccessPoint - Logs de Acesso</title>
-    <link rel="stylesheet" href="assets/style.css">
+    <title>AccessPoint - Logs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/style.css?v=<?php echo filemtime(__DIR__ . '/assets/style.css'); ?>">
 
     <style>
-
-        .filters-bar {
-            background: white;
-            border-radius: 24px;
-            padding: 20px 24px;
-            margin-bottom: 28px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .filters-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            align-items: flex-end;
-        }
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .filter-group label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #475569;
-        }
-        .filter-group input, .filter-group select {
-            padding: 10px 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            transition: 0.2s;
-        }
-        .filter-group input:focus, .filter-group select:focus {
-            border-color: #4361ee;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(67,97,238,0.1);
-        }
-        .btn-filter {
-            background: linear-gradient(105deg, #4361ee, #3a56d4);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.2s;
-            height: 42px;
-        }
-        .btn-filter:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 14px rgba(67,97,238,0.3);
-        }
-        .btn-clear {
-            background: #e2e8f0;
-            color: #1e293b;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            height: 42px;
-        }
-        .access-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-        .access-granted {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        .access-denied {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        .stats-card {
-            background: white;
-            border-radius: 20px;
-            padding: 16px 20px;
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-        .stats-number {
-            font-size: 1.8rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #4361ee, #7209b7);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-        }
+        h1 { display: flex; align-items: center; gap: 10px; font-size: 20px; margin-bottom: 20px; }
+        h1 .icon { width: 22px; height: 22px; color: var(--n-400); }
+        .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
+        .filters-actions { display: flex; gap: 10px; }
+        .status-badge.granted { background: var(--success-soft); color: #166534; }
+        .status-badge.denied { background: var(--danger-soft); color: #991b1b; }
         @media (max-width: 768px) {
-            .filters-grid {
-                grid-template-columns: 1fr;
-            }
-            .btn-filter, .btn-clear {
-                width: 100%;
-                justify-content: center;
-            }
-            .stats-card {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+            .filters-grid { grid-template-columns: 1fr; }
+            .filters-actions { width: 100%; }
+            .filters-actions .btn { flex: 1; }
         }
-
     </style>
 </head>
 <body>
@@ -199,29 +101,24 @@ $total_logs = $logs_result->num_rows;
     <?php include 'includes/sidebar.php'; ?>
 
     <main class="main-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
-            <h1 style="margin: 0;">📜 Logs de Acesso</h1>
-            <span style="background: #e2e8f0; padding: 6px 14px; border-radius: 40px; font-size: 0.85rem;">
-                Registros em tempo real
-            </span>
-        </div>
+        <h1><?php echo icon('file-text'); ?>Logs de Acesso</h1>
 
-        <div class="stats-card">
-            <div>🔍 <strong>Total de registros exibidos:</strong> <span class="stats-number"><?php echo $total_logs; ?></span></div>
-            <div>📅 Última atualização: <?php echo date('d/m/Y H:i:s'); ?></div>
+        <div class="datetime-banner">
+            <span><?php echo icon('search'); ?><strong><?php echo $total_logs; ?></strong>&nbsp;registros exibidos</span>
+            <span><?php echo icon('clock'); ?>Atualizado em <?php echo date('d/m/Y H:i:s'); ?></span>
         </div>
 
         <!-- Barra de filtros -->
 
-        <div class="filters-bar">
+        <div class="card-form">
             <form method="GET" action="">
                 <div class="filters-grid">
-                    <div class="filter-group">
-                        <label>🔎 Cartão (UID)</label>
+                    <div class="input-group">
+                        <label>Cartão (UID)</label>
                         <input type="text" name="search_card" placeholder="Código do cartão" value="<?php echo htmlspecialchars($search_card); ?>">
                     </div>
-                    <div class="filter-group">
-                        <label>📡 Dispositivo</label>
+                    <div class="input-group">
+                        <label>Dispositivo</label>
                         <select name="device_filter">
                             <option value="0">Todos</option>
                             <?php while($dev = $devices_list->fetch_assoc()): ?>
@@ -231,25 +128,25 @@ $total_logs = $logs_result->num_rows;
                             <?php endwhile; ?>
                         </select>
                     </div>
-                    <div class="filter-group">
-                        <label>🚪 Resultado</label>
+                    <div class="input-group">
+                        <label>Resultado</label>
                         <select name="status_filter">
                             <option value="">Todos</option>
                             <option value="granted" <?php echo ($status_filter == 'granted') ? 'selected' : ''; ?>>Permitido</option>
                             <option value="denied" <?php echo ($status_filter == 'denied') ? 'selected' : ''; ?>>Negado</option>
                         </select>
                     </div>
-                    <div class="filter-group">
-                        <label>📅 Data início</label>
+                    <div class="input-group">
+                        <label>Data início</label>
                         <input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>">
                     </div>
-                    <div class="filter-group">
-                        <label>📅 Data fim</label>
+                    <div class="input-group">
+                        <label>Data fim</label>
                         <input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>">
                     </div>
-                    <div class="filter-group" style="display: flex; flex-direction: row; gap: 8px;">
-                        <button type="submit" class="btn-filter">Filtrar</button>
-                        <a href="access_logs.php" class="btn-clear">Limpar</a>
+                    <div class="filters-actions">
+                        <button type="submit" class="btn btn-primary"><?php echo icon('filter'); ?>Filtrar</button>
+                        <a href="access_logs.php" class="btn btn-secondary">Limpar</a>
                     </div>
                 </div>
             </form>
@@ -276,8 +173,8 @@ $total_logs = $logs_result->num_rows;
                                 <td><code><?php echo htmlspecialchars($log['card_uid']); ?></code></td>
                                 <td><?php echo htmlspecialchars($log['device_name']); ?></td>
                                 <td>
-                                    <span class="access-badge <?php echo $log['access_granted'] ? 'access-granted' : 'access-denied'; ?>">
-                                        <?php echo $log['access_granted'] ? '✅ Permitido' : '❌ Negado'; ?>
+                                    <span class="status-badge <?php echo $log['access_granted'] ? 'granted' : 'denied'; ?>">
+                                        <?php echo $log['access_granted'] ? icon('check') . 'Permitido' : icon('x') . 'Negado'; ?>
                                     </span>
                                 </td>
                                 <td><?php echo htmlspecialchars($log['message']); ?></td>
@@ -285,17 +182,11 @@ $total_logs = $logs_result->num_rows;
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="5" style="text-align: center;">Nenhum registro de acesso encontrado com os filtros atuais.</td>
+                            <td colspan="5" style="text-align: center; color: var(--n-500);">Nenhum registro de acesso encontrado com os filtros atuais.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
-        </div>
-
-        <!-- Informação adicional -->
-         
-        <div style="background: #f1f5f9; border-radius: 20px; padding: 16px; margin-top: 28px; font-size: 0.85rem; text-align: center;">
-            💡 Os logs mostram todas as tentativas de acesso (sucesso ou falha). Use os filtros para refinar a busca.
         </div>
     </main>
 </div>
